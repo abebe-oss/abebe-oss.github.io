@@ -218,34 +218,35 @@ function renderNotes(notes) {
                 <button class="quick-edit-btn" title="Quick Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="quick-view-btn" title="Preview">
-                    <i class="fas fa-eye"></i>
+                <button class="quick-details-btn" title="Details">
+                    <i class="fas fa-info-circle"></i>
                 </button>
             </div>
         `;
         
-        // Main click event to open note
+        // Main click event to open note in preview mode
         noteCard.addEventListener('click', (e) => {
             // Don't trigger if clicking on action buttons
             if (e.target.closest('.note-card-actions')) return;
             
-            const fullNote = notes.find(n => n.id === note.id);
-            if (fullNote) openNoteModal(fullNote);
-        });
-        
-        // Quick view button
-        const quickViewBtn = noteCard.querySelector('.quick-view-btn');
-        quickViewBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
+            // Open in preview mode by default
             openNotePreview(note);
         });
         
-        // Quick edit button
+        // Quick edit button - opens editor
         const quickEditBtn = noteCard.querySelector('.quick-edit-btn');
         quickEditBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const fullNote = notes.find(n => n.id === note.id);
             if (fullNote) openNoteModal(fullNote);
+        });
+        
+        // Quick details button - shows note info
+        const quickDetailsBtn = noteCard.querySelector('.quick-details-btn');
+        quickDetailsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Show a quick tooltip or info about the note
+            showToast(`📝 ${note.title || 'Untitled'} • ${getTagEmoji(note.tag)} ${note.tag || 'No category'} • ${getTimeAgo(note.updatedAt)}`, 'info');
         });
         
         notesContainer.appendChild(noteCard);
@@ -309,6 +310,7 @@ function openNotePreview(note) {
                 <div class="preview-actions">
                     <button class="preview-edit-btn" title="Edit Note">
                         <i class="fas fa-edit"></i>
+                        <span class="edit-text">Edit</span>
                     </button>
                     <button class="preview-close-btn" title="Close">
                         <i class="fas fa-times"></i>
@@ -316,8 +318,14 @@ function openNotePreview(note) {
                 </div>
             </div>
             <div class="preview-meta">
-                <span class="preview-tag">${getTagEmoji(note.tag)} ${note.tag || 'No category'}</span>
-                <span class="preview-time">${getTimeAgo(note.updatedAt)}</span>
+                <div class="meta-left">
+                    <span class="preview-tag">${getTagEmoji(note.tag)} ${note.tag || 'No category'}</span>
+                    <span class="preview-time">${getTimeAgo(note.updatedAt)}</span>
+                </div>
+                <div class="meta-hint">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Click cards to preview, use Edit button to modify</span>
+                </div>
             </div>
             <div class="preview-body">
                 ${note.content || '<em>No content</em>'}
