@@ -218,8 +218,8 @@ function renderNotes(notes) {
                 <button class="quick-edit-btn" title="Quick Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="quick-details-btn" title="Details">
-                    <i class="fas fa-info-circle"></i>
+                <button class="quick-details-btn" title="Preview Note">
+                    <i class="fas fa-eye"></i>
                 </button>
             </div>
         `;
@@ -241,7 +241,7 @@ function renderNotes(notes) {
             if (fullNote) openNoteModal(fullNote);
         });
         
-        // Quick details button - shows note info with smooth tooltip
+        // Quick details button - opens preview modal like main click
         const quickDetailsBtn = noteCard.querySelector('.quick-details-btn');
         quickDetailsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -252,11 +252,8 @@ function renderNotes(notes) {
                 quickDetailsBtn.style.transform = '';
             }, 150);
             
-            // Show detailed info with better formatting
-            const tagText = note.tag ? `${getTagEmoji(note.tag)} ${note.tag}` : '📝 No category';
-            const infoText = `${note.title || 'Untitled Note'} • ${tagText} • ${getTimeAgo(note.updatedAt)}`;
-            
-            showToast(infoText, 'info');
+            // Open the same preview modal as main click
+            openNotePreview(note);
         });
         
         notesContainer.appendChild(noteCard);
