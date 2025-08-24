@@ -330,8 +330,9 @@ function openNotePreview(note) {
                     <span class="preview-time">${getTimeAgo(note.updatedAt)}</span>
                 </div>
                 <div class="meta-hint">
-                    <i class="fas fa-info-circle"></i>
-                    <span>Click cards to preview, use Edit button to modify</span>
+                    <button class="hint-preview-btn" title="Cards open in preview mode">
+                        <i class="fas fa-eye"></i>
+                    </button>
                 </div>
             </div>
             <div class="preview-body">

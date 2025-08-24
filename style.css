@@ -556,9 +556,38 @@ body {
     white-space: nowrap;
 }
 
+.hint-preview-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--success), #22c55e);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    opacity: 0.8;
+}
+
+.hint-preview-btn:hover {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+
 @media (max-width: 600px) {
     .meta-hint {
-        display: none;
+        justify-content: center;
+    }
+    
+    .hint-preview-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 0.7rem;
     }
 }
 
