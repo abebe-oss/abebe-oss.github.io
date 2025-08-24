@@ -274,14 +274,46 @@ body {
     display: flex;
     gap: 0.5rem;
     opacity: 0;
-    transition: var(--transition);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: absolute;
     bottom: 1rem;
     right: 1rem;
+    transform: translateY(10px);
 }
 
 .note-card:hover .note-card-actions {
     opacity: 1;
+    transform: translateY(0);
+}
+
+/* Focus states for accessibility */
+.quick-edit-btn:focus,
+.quick-details-btn:focus {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+    transform: scale(1.05);
+}
+
+/* Smooth loading animation for note cards */
+.note-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced hover state for note cards */
+.note-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px -5px var(--shadow), 0 10px 10px -5px var(--shadow);
+    border-color: var(--accent-primary);
+}
+
+/* Smooth transition for card content */
+.note-card-content h3,
+.note-preview {
+    transition: color 0.2s ease;
+}
+
+.note-card:hover .note-card-content h3 {
+    color: var(--accent-primary);
 }
 
 .quick-edit-btn,
@@ -290,24 +322,60 @@ body {
     height: 32px;
     border: none;
     border-radius: 50%;
-    background: var(--accent-primary);
     color: white;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.8rem;
-    transition: var(--transition);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Staggered animation for action buttons */
+.quick-edit-btn {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    transition-delay: 0.05s;
 }
 
 .quick-details-btn {
-    background: var(--text-secondary);
+    background: linear-gradient(135deg, var(--text-secondary), #6b7280);
+    transition-delay: 0.1s;
 }
 
 .quick-edit-btn:hover,
 .quick-details-btn:hover {
-    transform: scale(1.1);
+    transform: scale(1.1) translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.quick-edit-btn:active,
+.quick-details-btn:active {
+    transform: scale(1.05) translateY(0);
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ripple effect for smooth interaction */
+.quick-edit-btn::before,
+.quick-details-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.quick-edit-btn:active::before,
+.quick-details-btn:active::before {
+    width: 40px;
+    height: 40px;
 }
 
 @keyframes slideInUp {

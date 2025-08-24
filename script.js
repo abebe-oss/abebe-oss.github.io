@@ -241,12 +241,22 @@ function renderNotes(notes) {
             if (fullNote) openNoteModal(fullNote);
         });
         
-        // Quick details button - shows note info
+        // Quick details button - shows note info with smooth tooltip
         const quickDetailsBtn = noteCard.querySelector('.quick-details-btn');
         quickDetailsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Show a quick tooltip or info about the note
-            showToast(`📝 ${note.title || 'Untitled'} • ${getTagEmoji(note.tag)} ${note.tag || 'No category'} • ${getTimeAgo(note.updatedAt)}`, 'info');
+            
+            // Add visual feedback
+            quickDetailsBtn.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                quickDetailsBtn.style.transform = '';
+            }, 150);
+            
+            // Show detailed info with better formatting
+            const tagText = note.tag ? `${getTagEmoji(note.tag)} ${note.tag}` : '📝 No category';
+            const infoText = `${note.title || 'Untitled Note'} • ${tagText} • ${getTimeAgo(note.updatedAt)}`;
+            
+            showToast(infoText, 'info');
         });
         
         notesContainer.appendChild(noteCard);
