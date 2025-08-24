@@ -82,12 +82,27 @@
             </div>
             <div class="sidebar-content">
                 <div class="sidebar-section">
+                    <h4>🏠 Main Navigation</h4>
+                    <button id="nav-notes" class="sidebar-btn nav-btn active" data-view="notes">
+                        <i class="fas fa-sticky-note"></i> Notes
+                    </button>
+                    <button id="nav-books" class="sidebar-btn nav-btn" data-view="books">
+                        <i class="fas fa-book"></i> Books
+                    </button>
+                    <button id="nav-highlights" class="sidebar-btn nav-btn" data-view="highlights">
+                        <i class="fas fa-highlighter"></i> Highlights
+                    </button>
+                </div>
+                <div class="sidebar-section">
                     <h4>📝 Actions</h4>
                     <button id="sidebar-new-note" class="sidebar-btn">
                         <i class="fas fa-plus"></i> New Note
                     </button>
+                    <button id="sidebar-new-book" class="sidebar-btn">
+                        <i class="fas fa-book-open"></i> Add Book
+                    </button>
                     <button id="sidebar-search" class="sidebar-btn">
-                        <i class="fas fa-search"></i> Search Notes
+                        <i class="fas fa-search"></i> Search
                     </button>
                 </div>
                 <div class="sidebar-section">
@@ -114,6 +129,42 @@
                         ❤️ Personal
                     </button>
                 </div>
+                <div class="sidebar-section book-categories" style="display: none;">
+                    <h4>📚 Book Categories</h4>
+                    <button class="sidebar-btn book-filter" data-status="all">
+                        📚 All Books
+                    </button>
+                    <button class="sidebar-btn book-filter" data-status="reading">
+                        📖 Currently Reading
+                    </button>
+                    <button class="sidebar-btn book-filter" data-status="completed">
+                        ✅ Completed
+                    </button>
+                    <button class="sidebar-btn book-filter" data-status="paused">
+                        ⏸️ Paused
+                    </button>
+                </div>
+                <div class="sidebar-section highlight-categories" style="display: none;">
+                    <h4>🎨 Highlight Colors</h4>
+                    <button class="sidebar-btn highlight-filter" data-color="all">
+                        🌈 All Highlights
+                    </button>
+                    <button class="sidebar-btn highlight-filter" data-color="yellow">
+                        🟡 Key Concepts
+                    </button>
+                    <button class="sidebar-btn highlight-filter" data-color="green">
+                        🟢 Actionable Insights
+                    </button>
+                    <button class="sidebar-btn highlight-filter" data-color="blue">
+                        🔵 Memorable Quotes
+                    </button>
+                    <button class="sidebar-btn highlight-filter" data-color="orange">
+                        🟠 Questions
+                    </button>
+                    <button class="sidebar-btn highlight-filter" data-color="red">
+                        🔴 Critical Points
+                    </button>
+                </div>
             </div>
         </div>
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
@@ -127,6 +178,61 @@
                 </div>
             </div>
             <div class="notes-container" id="notes-container"></div>
+        </div>
+
+        <!-- Books Library Section -->
+        <div class="books-list" id="books-list" style="display: none;">
+            <div class="list-header">
+                <h2><i class="fas fa-book"></i> Your Books <span id="books-count">(0)</span></h2>
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-books" placeholder="Find your books...">
+                </div>
+                <div class="view-controls">
+                    <button id="books-grid-view" class="view-btn active" title="Grid View">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                    <button id="books-list-view" class="view-btn" title="List View">
+                        <i class="fas fa-list"></i>
+                    </button>
+                    <button id="add-book-btn" class="btn primary">
+                        <i class="fas fa-plus"></i> Add Book
+                    </button>
+                </div>
+            </div>
+            <div class="books-container" id="books-container"></div>
+        </div>
+
+        <!-- Highlights Section -->
+        <div class="highlights-list" id="highlights-list" style="display: none;">
+            <div class="list-header">
+                <h2><i class="fas fa-highlighter"></i> Your Highlights <span id="highlights-count">(0)</span></h2>
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-highlights" placeholder="Find in highlights...">
+                </div>
+                <div class="highlight-filters">
+                    <button class="highlight-color-btn active" data-color="all" title="All">
+                        <i class="fas fa-rainbow"></i>
+                    </button>
+                    <button class="highlight-color-btn" data-color="yellow" title="Key Concepts">
+                        <span class="color-dot yellow"></span>
+                    </button>
+                    <button class="highlight-color-btn" data-color="green" title="Actionable">
+                        <span class="color-dot green"></span>
+                    </button>
+                    <button class="highlight-color-btn" data-color="blue" title="Quotes">
+                        <span class="color-dot blue"></span>
+                    </button>
+                    <button class="highlight-color-btn" data-color="orange" title="Questions">
+                        <span class="color-dot orange"></span>
+                    </button>
+                    <button class="highlight-color-btn" data-color="red" title="Critical">
+                        <span class="color-dot red"></span>
+                    </button>
+                </div>
+            </div>
+            <div class="highlights-container" id="highlights-container"></div>
         </div>
     </div>
 
@@ -186,6 +292,197 @@
                     <button id="save-note" class="btn primary"><i class="fas fa-save"></i> Save & Close</button>
                     <button id="delete-note" class="btn danger"><i class="fas fa-trash"></i> Delete</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Book Import Modal -->
+    <div id="book-import-modal" class="modal-container">
+        <div class="modal-overlay"></div>
+        <div class="modal-content book-import-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-book-open"></i> Add New Book</h3>
+                <button class="icon-btn modal-close-btn" onclick="closeBookImportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="import-methods">
+                <div class="import-method active" data-method="text">
+                    <i class="fas fa-keyboard"></i>
+                    <span>Type/Paste Text</span>
+                </div>
+                <div class="import-method" data-method="file">
+                    <i class="fas fa-file-upload"></i>
+                    <span>Upload File</span>
+                </div>
+                <div class="import-method" data-method="manual">
+                    <i class="fas fa-edit"></i>
+                    <span>Manual Entry</span>
+                </div>
+            </div>
+            <div class="import-content">
+                <!-- Text Input Method -->
+                <div id="text-import" class="import-panel active">
+                    <div class="form-group">
+                        <label for="book-title-input">Book Title *</label>
+                        <input type="text" id="book-title-input" placeholder="Enter book title..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="book-author-input">Author</label>
+                        <input type="text" id="book-author-input" placeholder="Author name...">
+                    </div>
+                    <div class="form-group">
+                        <label for="book-category-select">Category</label>
+                        <select id="book-category-select">
+                            <option value="fiction">Fiction</option>
+                            <option value="non-fiction">Non-Fiction</option>
+                            <option value="self-help">Self-Help</option>
+                            <option value="technical">Technical</option>
+                            <option value="biography">Biography</option>
+                            <option value="business">Business</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="book-content-input">Book Content *</label>
+                        <textarea id="book-content-input" placeholder="Paste your book content here..." rows="12" required></textarea>
+                    </div>
+                </div>
+                <!-- File Upload Method -->
+                <div id="file-import" class="import-panel">
+                    <div class="file-drop-zone" id="file-drop-zone">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drop a text file here or <button type="button" onclick="document.getElementById('file-input').click()">browse files</button></p>
+                        <input type="file" id="file-input" accept=".txt,.md" style="display: none;">
+                    </div>
+                    <div class="file-info" id="file-info" style="display: none;">
+                        <p>File selected: <span id="file-name"></span></p>
+                        <button type="button" onclick="clearFileSelection()">Clear</button>
+                    </div>
+                </div>
+                <!-- Manual Entry Method -->
+                <div id="manual-import" class="import-panel">
+                    <div class="form-group">
+                        <label for="manual-book-title">Book Title *</label>
+                        <input type="text" id="manual-book-title" placeholder="Enter book title..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-book-author">Author</label>
+                        <input type="text" id="manual-book-author" placeholder="Author name...">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-book-isbn">ISBN (Optional)</label>
+                        <input type="text" id="manual-book-isbn" placeholder="978-0000000000">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-book-category">Category</label>
+                        <select id="manual-book-category">
+                            <option value="fiction">Fiction</option>
+                            <option value="non-fiction">Non-Fiction</option>
+                            <option value="self-help">Self-Help</option>
+                            <option value="technical">Technical</option>
+                            <option value="biography">Biography</option>
+                            <option value="business">Business</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-total-pages">Total Pages (Optional)</label>
+                        <input type="number" id="manual-total-pages" placeholder="0">
+                    </div>
+                    <div class="note-info">
+                        <i class="fas fa-info-circle"></i>
+                        <p>You can add content later or start reading immediately.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="closeBookImportModal()">Cancel</button>
+                <button class="btn primary" id="save-book-btn">
+                    <i class="fas fa-save"></i> Save Book
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Book Reader Modal -->
+    <div id="book-reader-modal" class="modal-container full-screen">
+        <div class="modal-overlay"></div>
+        <div class="modal-content reader-content">
+            <div class="reader-header">
+                <div class="reader-info">
+                    <h3 id="reader-book-title">Book Title</h3>
+                    <p id="reader-book-author">Author Name</p>
+                </div>
+                <div class="reader-controls">
+                    <button class="icon-btn" id="reader-settings-btn" title="Reading Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="icon-btn" id="reader-highlights-btn" title="Toggle Highlights Panel">
+                        <i class="fas fa-highlighter"></i>
+                    </button>
+                    <button class="icon-btn" id="reader-notes-btn" title="Toggle Notes Panel">
+                        <i class="fas fa-sticky-note"></i>
+                    </button>
+                    <button class="icon-btn" onclick="closeBookReader()" title="Close Reader">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="reader-body">
+                <div class="reader-main">
+                    <div class="reading-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="reading-progress-fill"></div>
+                        </div>
+                        <span class="progress-text" id="reading-progress-text">0%</span>
+                    </div>
+                    <div class="reader-content-area" id="reader-content-area">
+                        <!-- Book content will be loaded here -->
+                    </div>
+                </div>
+                <div class="reader-sidebar" id="reader-sidebar">
+                    <div class="sidebar-tabs">
+                        <button class="sidebar-tab active" data-tab="highlights">
+                            <i class="fas fa-highlighter"></i> Highlights
+                        </button>
+                        <button class="sidebar-tab" data-tab="notes">
+                            <i class="fas fa-sticky-note"></i> Notes
+                        </button>
+                    </div>
+                    <div class="sidebar-content">
+                        <div id="highlights-panel" class="sidebar-panel active">
+                            <!-- Highlights will be loaded here -->
+                        </div>
+                        <div id="notes-panel" class="sidebar-panel">
+                            <!-- Notes will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Floating Highlight Toolbar -->
+            <div class="highlight-toolbar" id="highlight-toolbar" style="display: none;">
+                <button class="highlight-btn" data-color="yellow" title="Key Concept">
+                    <span class="color-dot yellow"></span>
+                </button>
+                <button class="highlight-btn" data-color="green" title="Actionable Insight">
+                    <span class="color-dot green"></span>
+                </button>
+                <button class="highlight-btn" data-color="blue" title="Memorable Quote">
+                    <span class="color-dot blue"></span>
+                </button>
+                <button class="highlight-btn" data-color="orange" title="Question">
+                    <span class="color-dot orange"></span>
+                </button>
+                <button class="highlight-btn" data-color="red" title="Critical Point">
+                    <span class="color-dot red"></span>
+                </button>
+                <button class="highlight-btn" id="add-note-to-highlight" title="Add Note">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="highlight-btn" id="remove-highlight" title="Remove Highlight">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         </div>
     </div>
