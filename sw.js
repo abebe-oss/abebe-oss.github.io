@@ -13,7 +13,8 @@ const STATIC_FILES = [
   './favicon.ico',
   // External CDN resources
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://unpkg.com/sweetalert/dist/sweetalert.min.js'
+  'https://cdn.jsdelivr.net/npm/honey-toast@latest/dist/toast.umd.min.js',
+  'https://cdn.jsdelivr.net/npm/honey-toast@latest/dist/style.css'
 ];
 
 // Install event - cache static resources

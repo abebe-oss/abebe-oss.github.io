@@ -23,7 +23,8 @@
     
     <!-- External Dependencies -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/honey-toast@latest/dist/toast.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/honey-toast@latest/dist/style.css">
     
     <!-- App Styles -->
     <link rel="stylesheet" href="style.css">
@@ -55,6 +56,23 @@
                 <h1><span class="sparkle">✨</span> Yaadannoo</h1>
                 <p class="tagline">Your thoughts, beautifully organized <span class="waving-hand">👋</span></p>
             </div>
+            
+            <!-- Desktop Navigation -->
+            <div class="desktop-navigation">
+                <button id="nav-notes-desktop" class="nav-btn desktop-nav-btn" data-view="notes">
+                    <i class="fas fa-sticky-note"></i>
+                    <span>Notes</span>
+                </button>
+                <button id="nav-books-desktop" class="nav-btn desktop-nav-btn active" data-view="books">
+                    <i class="fas fa-book"></i>
+                    <span>Books</span>
+                </button>
+                <button id="nav-highlights-desktop" class="nav-btn desktop-nav-btn" data-view="highlights">
+                    <i class="fas fa-highlighter"></i>
+                    <span>Highlights</span>
+                </button>
+            </div>
+            
             <div class="header-actions">
                 <!-- Mobile Menu Button -->
                 <button id="mobile-menu-btn" class="icon-btn mobile-menu-btn" title="Menu">
@@ -83,10 +101,10 @@
             <div class="sidebar-content">
                 <div class="sidebar-section">
                     <h4>🏠 Main Navigation</h4>
-                    <button id="nav-notes" class="sidebar-btn nav-btn active" data-view="notes">
+                    <button id="nav-notes" class="sidebar-btn nav-btn" data-view="notes">
                         <i class="fas fa-sticky-note"></i> Notes
                     </button>
-                    <button id="nav-books" class="sidebar-btn nav-btn" data-view="books">
+                    <button id="nav-books" class="sidebar-btn nav-btn active" data-view="books">
                         <i class="fas fa-book"></i> Books
                     </button>
                     <button id="nav-highlights" class="sidebar-btn nav-btn" data-view="highlights">
@@ -169,7 +187,7 @@
         </div>
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
-        <div class="notes-list" id="notes-list">
+        <div class="notes-list" id="notes-list" style="display: none;">
             <div class="list-header">
                 <h2><i class="fas fa-sticky-note"></i> Your Notes <span id="notes-count">(0)</span></h2>
                 <div class="search-container">
@@ -181,7 +199,7 @@
         </div>
 
         <!-- Books Library Section -->
-        <div class="books-list" id="books-list" style="display: none;">
+        <div class="books-list" id="books-list">
             <div class="list-header">
                 <h2><i class="fas fa-book"></i> Your Books <span id="books-count">(0)</span></h2>
                 <div class="search-container">
@@ -509,17 +527,17 @@
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                     // New content is available, prompt user to refresh
-                                    if (typeof swal !== 'undefined') {
-                                        swal({
-                                            title: 'App Updated!',
-                                            text: 'A new version of Yaadannoo is available. Refresh to get the latest features.',
-                                            icon: 'info',
-                                            buttons: ['Later', 'Refresh Now']
-                                        }).then((willRefresh) => {
-                                            if (willRefresh) {
+                                    if (typeof toast !== 'undefined') {
+                                        toast.notify('App Updated! Refresh to get the latest features.');
+                                        
+                                        // Optionally auto-refresh after showing toast
+                                        setTimeout(() => {
+                                            if (confirm('A new version is available. Refresh now?')) {
                                                 window.location.reload();
                                             }
-                                        });
+                                        }, 1000);
+                                    } else if (confirm('App Updated! A new version is available. Refresh now?')) {
+                                        window.location.reload();
                                     }
                                 }
                             });
