@@ -399,55 +399,60 @@ function deleteBookNoteFromDB(id) {
  * @param {string} icon 'success', 'error', 'warning', 'info'.
  */
 function showToast(title, icon = 'success') {
-    if (typeof toast !== 'undefined') {
-        // Use honey-toast with the simple API
-        try {
-            // Try with options object first
-            toast.notify({
-                message: title,
-                type: icon === 'error' ? 'error' : icon === 'warning' ? 'warning' : icon === 'info' ? 'info' : 'success',
-                duration: 2000,
-                position: 'bottom-right'
-            });
-        } catch (e) {
-            // Fallback to simple string API
-            toast.notify(title);
-        }
-    } else {
-        // Fallback to console and try to create a simple toast
-        console.log(`${icon.toUpperCase()}: ${title}`);
-        
-        // Create a simple toast element
-        const toastEl = document.createElement('div');
-        toastEl.className = `simple-toast toast-${icon}`;
-        toastEl.textContent = title;
-        toastEl.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: ${icon === 'error' ? '#ef4444' : icon === 'warning' ? '#f59e0b' : icon === 'info' ? '#3b82f6' : '#10b981'};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 10000;
-            font-size: 14px;
-            max-width: 300px;
-            animation: slideIn 0.3s ease-out;
-        `;
-        
-        document.body.appendChild(toastEl);
-        
-        // Auto-remove after 2 seconds
+    // Always use custom toast implementation to avoid external library interference
+    console.log(`${icon.toUpperCase()}: ${title}`);
+    
+    // Create a custom toast element with highest z-index
+    const toastEl = document.createElement('div');
+    toastEl.className = `custom-toast toast-${icon}`;
+    toastEl.textContent = title; // Ensure only our title is shown
+    
+    // Get icon for toast
+    const iconMap = {
+        'success': '✅',
+        'error': '❌', 
+        'warning': '⚠️',
+        'info': 'ℹ️'
+    };
+    
+    const toastIcon = iconMap[icon] || '✅';
+    
+    toastEl.innerHTML = `
+        <div class="toast-content">
+            <span class="toast-icon">${toastIcon}</span>
+            <span class="toast-message">${title}</span>
+        </div>
+    `;
+    
+    toastEl.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${icon === 'error' ? '#ef4444' : icon === 'warning' ? '#f59e0b' : icon === 'info' ? '#3b82f6' : '#10b981'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        z-index: 99999999;
+        font-size: 14px;
+        max-width: 350px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        animation: toastSlideIn 0.3s ease-out;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+    `;
+    
+    document.body.appendChild(toastEl);
+    
+    // Auto-remove after 2 seconds
+    setTimeout(() => {
+        toastEl.style.animation = 'toastSlideOut 0.3s ease-in';
         setTimeout(() => {
-            toastEl.style.animation = 'slideOut 0.3s ease-in';
-            setTimeout(() => {
-                if (document.body.contains(toastEl)) {
-                    document.body.removeChild(toastEl);
-                }
-            }, 300);
-        }, 2000);
-    }
+            if (document.body.contains(toastEl)) {
+                document.body.removeChild(toastEl);
+            }
+        }, 300);
+    }, 2000);
 }
 
 /**

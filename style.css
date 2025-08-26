@@ -47,6 +47,50 @@
 [data-theme="forest"] .tag.active { background: var(--accent-secondary); color: var(--bg-primary); border-color: var(--accent-secondary); }
 [data-theme="forest"] .header-content h1 { background: linear-gradient(90deg, var(--text-primary), var(--accent-secondary)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
+/* --- Custom Toast Notifications --- */
+.custom-toast {
+    pointer-events: auto;
+    user-select: none;
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toast-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.toast-message {
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+@keyframes toastSlideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
 /* --- General & Layout --- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 

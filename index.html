@@ -23,8 +23,6 @@
     
     <!-- External Dependencies -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/honey-toast@latest/dist/toast.umd.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/honey-toast@latest/dist/style.css">
     
     <!-- App Styles -->
     <link rel="stylesheet" href="style.css">
@@ -527,8 +525,8 @@
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                     // New content is available, prompt user to refresh
-                                    if (typeof toast !== 'undefined') {
-                                        toast.notify('App Updated! Refresh to get the latest features.');
+                                    if (typeof showToast === 'function') {
+                                        showToast('App Updated! Refresh to get the latest features.', 'info');
                                         
                                         // Optionally auto-refresh after showing toast
                                         setTimeout(() => {
