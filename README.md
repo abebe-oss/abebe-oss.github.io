@@ -17,7 +17,7 @@ A beautiful, emoji-powered note-taking Progressive Web App that works offline. O
 - ⚡ **Fast Loading**: Service worker caching for instant startup
 - 🎨 **Native Feel**: Looks and feels like a native app
 - 🔄 **Auto-Updates**: Automatic updates when new versions are available
-- 🌓 **Multi-Theme**: Light, Dark, and Forest themes
+- 🌓 **Multi-Theme**: Light and Dark themes
 
 ## 🛠️ Setup
 
@@ -70,12 +70,11 @@ If the automatic prompt doesn't appear:
 
 ## 🎨 Themes
 
-Yaadannoo includes three beautiful themes:
+Yaadannoo includes two beautiful themes:
 - **Light**: Clean, minimal design perfect for daily use
 - **Dark**: Easy on the eyes for low-light environments
-- **Forest**: Nature-inspired green palette for a calming experience
 
-Click the theme toggle button (sun/moon/tree icon) to cycle through themes.
+Click the theme toggle button (sun/moon icon) to switch between themes.
 
 ## 📱 PWA Features
 

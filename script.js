@@ -21,9 +21,26 @@ let isHighlightMode = false;
 let selectedText = null;
 let selectionRange = null;
 
+// Enhanced Reading Progress State
+let readingSessionStartTime = null;
+let totalReadingTime = 0;
+let wordsPerMinute = 0;
+let currentScrollProgress = 0;
+let readingBookmarks = new Map(); // bookId -> bookmarks array
+let readingGoals = JSON.parse(localStorage.getItem('readingGoals') || '{}');
+let readingSessions = JSON.parse(localStorage.getItem('readingSessions') || '[]');
+let isReadingActive = false;
+let readingProgressUpdateInterval = null;
+let scrollProgressThrottleTimer = null;
+let lastReportedProgress = 0; // Track last reported progress for book card updates
+
 // PWA Install Prompt variables
 let deferredPrompt = null;
 let installPromptShown = false;
+
+// Auto-refresh and Update Management
+let updateAvailable = false;
+let updateCheckInterval = null;
 
 // DOM element references
 const notesContainer = document.getElementById('notes-container');
@@ -74,7 +91,13 @@ const sidebarOverlay = document.getElementById('sidebar-overlay');
 const emojiSearchInput = document.getElementById('emoji-search-input');
 const emojiContent = document.getElementById('emoji-content');
 
-const themes = [ { name: 'light', icon: 'fa-sun' }, { name: 'dark', icon: 'fa-moon' }, { name: 'forest', icon: 'fa-tree' }];
+// Reader Mobile Menu DOM references
+const readerMobileMenuBtn = document.getElementById('reader-mobile-menu-btn');
+const readerMobileSidebar = document.getElementById('reader-mobile-sidebar');
+const closeReaderSidebarBtn = document.getElementById('close-reader-sidebar-btn');
+const readerSidebarOverlay = document.getElementById('reader-sidebar-overlay');
+
+const themes = [ { name: 'light', icon: 'fa-sun' }, { name: 'dark', icon: 'fa-moon' }];
 
 // Enhanced Emoji Data for truly emoji-powered experience
 const emojiData = {
@@ -91,6 +114,7 @@ const emojiData = {
 // Current emoji filter state
 let currentEmojiCategory = 'recent';
 let currentNoteFilter = 'all';
+let currentBooksView = 'grid'; // Track current books view: 'grid' or 'list'
 
 // --- CORE DATABASE FUNCTIONS (Enhanced for Book Summary Features) ---
 function openDatabase() { 
@@ -819,6 +843,9 @@ function switchView(viewName) {
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.desktop-nav-btn').forEach(btn => btn.classList.remove('active'));
     
+    // Update button visibility based on view
+    updateViewSpecificButtons(viewName);
+    
     // Show selected view and update nav
     switch (viewName) {
         case 'notes':
@@ -839,6 +866,8 @@ function switchView(viewName) {
             if (booksList) {
                 booksList.style.display = 'block';
                 loadBooks();
+                // Refresh book cards to show latest progress
+                refreshBookCardsProgress();
             }
             if (navBooks) navBooks.classList.add('active');
             const navBooksDesktop = document.getElementById('nav-books-desktop');
@@ -863,6 +892,34 @@ function switchView(viewName) {
                 else section.style.display = 'none';
             });
             break;
+    }
+}
+
+/**
+ * Updates visibility of view-specific buttons based on current view
+ */
+function updateViewSpecificButtons(viewName) {
+    // Get all add note buttons
+    const newNoteBtn = document.getElementById('new-note-btn'); // Desktop
+    const sidebarNewNote = document.getElementById('sidebar-new-note'); // Mobile sidebar
+    const floatingNewNote = document.getElementById('floating-new-note'); // Floating action button
+    
+    // Show/hide buttons based on view
+    const isNotesView = viewName === 'notes';
+    
+    // Desktop add note button
+    if (newNoteBtn) {
+        newNoteBtn.style.display = isNotesView ? 'grid' : 'none';
+    }
+    
+    // Mobile sidebar add note button
+    if (sidebarNewNote) {
+        sidebarNewNote.style.display = isNotesView ? 'flex' : 'none';
+    }
+    
+    // Floating add note button
+    if (floatingNewNote) {
+        floatingNewNote.style.display = isNotesView ? 'flex' : 'none';
     }
 }
 
@@ -1077,6 +1134,9 @@ function closeBookImportModal() {
 function openBookReader(bookId) {
     currentBookId = bookId;
     
+    // Initialize reading session
+    startReadingSession(bookId);
+    
     // Load book data and populate reader
     getBookFromDB(bookId).then(book => {
         if (book && bookReaderModal) {
@@ -1106,20 +1166,25 @@ function openBookReader(bookId) {
                 
                 // Restore existing highlights for this book
                 restoreBookHighlights(bookId);
+                
+                // Setup enhanced reading progress tracking
+                setupReadingProgressTracking(bookId);
+                
+                // Restore reading position if exists
+                restoreReadingPosition(book);
             }
             
-            // Update reading progress
-            const progressFill = document.getElementById('reading-progress-fill');
-            const progressText = document.getElementById('reading-progress-text');
-            const progress = book.totalPages ? Math.round((book.currentPage / book.totalPages) * 100) : 0;
-            if (progressFill) progressFill.style.width = `${progress}%`;
-            if (progressText) progressText.textContent = `${progress}%`;
+            // Update reading progress display
+            updateReadingProgressDisplay(book);
             
             // Load highlights for this book
             loadBookHighlights(bookId);
             
             // Load notes for this book
             loadBookNotes(bookId);
+            
+            // Load bookmarks for this book
+            loadBookmarks(bookId);
             
             // Show reader modal
             bookReaderModal.classList.add('visible');
@@ -1167,6 +1232,570 @@ function setupBookHighlighting() {
     });
     
     console.log('Book highlighting setup completed');
+}
+
+// --- ENHANCED READING PROGRESS FUNCTIONS ---
+
+/**
+ * Starts a new reading session for tracking time and progress
+ */
+function startReadingSession(bookId) {
+    readingSessionStartTime = Date.now();
+    isReadingActive = true;
+    lastReportedProgress = 0; // Reset progress tracking
+    
+    // Save reading session start
+    const session = {
+        bookId: bookId,
+        startTime: readingSessionStartTime,
+        endTime: null,
+        duration: 0,
+        wordsRead: 0,
+        progressStart: 0,
+        progressEnd: 0
+    };
+    
+    // Get current book to set starting progress
+    getBookFromDB(bookId).then(book => {
+        if (book) {
+            session.progressStart = book.scrollPosition || 0;
+        }
+    }).catch(console.error);
+    
+    readingSessions.push(session);
+    console.log('Reading session started for book:', bookId);
+}
+
+/**
+ * Ends the current reading session and saves data
+ */
+function endReadingSession() {
+    if (!readingSessionStartTime || !isReadingActive) return;
+    
+    const sessionDuration = Date.now() - readingSessionStartTime;
+    isReadingActive = false;
+    
+    // Update the current session
+    const currentSession = readingSessions[readingSessions.length - 1];
+    if (currentSession) {
+        currentSession.endTime = Date.now();
+        currentSession.duration = sessionDuration;
+        currentSession.progressEnd = currentScrollProgress;
+        currentSession.wordsRead = calculateWordsRead(currentSession.progressStart, currentSession.progressEnd);
+    }
+    
+    // Save sessions to localStorage
+    localStorage.setItem('readingSessions', JSON.stringify(readingSessions));
+    
+    // Update reading statistics
+    updateReadingStatistics();
+    
+    console.log('Reading session ended. Duration:', sessionDuration + 'ms');
+    readingSessionStartTime = null;
+}
+
+/**
+ * Sets up enhanced scroll-based reading progress tracking
+ */
+function setupReadingProgressTracking(bookId) {
+    const readerContentArea = document.getElementById('reader-content-area');
+    if (!readerContentArea) return;
+    
+    // Remove existing listeners to prevent duplicates
+    readerContentArea.removeEventListener('scroll', handleScrollProgress);
+    
+    // Add scroll listener for progress tracking
+    readerContentArea.addEventListener('scroll', (e) => handleScrollProgress(e, bookId));
+    
+    // Start progress update interval
+    if (readingProgressUpdateInterval) {
+        clearInterval(readingProgressUpdateInterval);
+    }
+    
+    readingProgressUpdateInterval = setInterval(() => {
+        updateReadingSpeed();
+        updateTimeEstimates();
+        autoSaveReadingPosition(bookId);
+        
+        // Update book card progress every 5 seconds if books view is active
+        if (currentBookId && activeView === 'books') {
+            getBookFromDB(currentBookId).then(book => {
+                if (book && book.progressPercent !== undefined) {
+                    updateBookCardProgress(currentBookId, book.progressPercent);
+                }
+            }).catch(console.error);
+        }
+    }, 5000); // Update every 5 seconds
+    
+    console.log('Enhanced reading progress tracking setup completed');
+}
+
+/**
+ * Handles scroll progress tracking with throttling
+ */
+function handleScrollProgress(event, bookId) {
+    // Throttle scroll updates to prevent performance issues
+    if (scrollProgressThrottleTimer) {
+        clearTimeout(scrollProgressThrottleTimer);
+    }
+    
+    scrollProgressThrottleTimer = setTimeout(() => {
+        const container = event.target;
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight - container.clientHeight;
+        
+        if (scrollHeight > 0) {
+            currentScrollProgress = (scrollTop / scrollHeight) * 100;
+            
+            // Update progress display
+            updateScrollBasedProgress(currentScrollProgress);
+            
+            // Save scroll position to book
+            updateBookScrollPosition(bookId, scrollTop, currentScrollProgress);
+            
+            // Immediately update book card if significant progress change
+            if (activeView === 'books') {
+                const progressChange = Math.abs(currentScrollProgress - (lastReportedProgress || 0));
+                if (progressChange > 5) { // Update every 5% progress change
+                    updateBookCardProgress(bookId, currentScrollProgress);
+                    lastReportedProgress = currentScrollProgress;
+                }
+            }
+        }
+    }, 100); // Throttle to 100ms
+}
+
+/**
+ * Updates the visual progress display based on scroll position
+ * This shows current reading position but doesn't override maximum progress
+ */
+function updateScrollBasedProgress(progress) {
+    const progressFill = document.getElementById('reading-progress-fill');
+    const progressText = document.getElementById('reading-progress-text');
+    
+    // Get the current book's maximum progress
+    if (currentBookId) {
+        getBookFromDB(currentBookId).then(book => {
+            if (book) {
+                // Show the higher of current scroll position or saved maximum progress
+                const maxProgress = Math.max(progress, book.progressPercent || 0);
+                
+                if (progressFill) {
+                    progressFill.style.width = `${Math.round(maxProgress)}%`;
+                    progressFill.style.transition = 'width 0.3s ease';
+                }
+                
+                if (progressText) {
+                    progressText.textContent = `${Math.round(maxProgress)}%`;
+                }
+                
+                // Add a subtle indicator if user has scrolled back from their max progress
+                if (progress < (book.progressPercent || 0)) {
+                    if (progressText) {
+                        progressText.textContent = `${Math.round(book.progressPercent)}%`;
+                        progressText.style.opacity = '0.8';
+                        progressText.title = `Maximum progress: ${Math.round(book.progressPercent)}%, Current position: ${Math.round(progress)}%`;
+                    }
+                } else {
+                    if (progressText) {
+                        progressText.style.opacity = '1';
+                        progressText.title = '';
+                    }
+                }
+            }
+        }).catch(console.error);
+    } else {
+        // Fallback for when no book is loaded
+        if (progressFill) {
+            progressFill.style.width = `${Math.round(progress)}%`;
+            progressFill.style.transition = 'width 0.3s ease';
+        }
+        
+        if (progressText) {
+            progressText.textContent = `${Math.round(progress)}%`;
+        }
+    }
+}
+
+/**
+ * Updates book's scroll position in the database
+ */
+function updateBookScrollPosition(bookId, scrollTop, progressPercent) {
+    getBookFromDB(bookId).then(book => {
+        if (book) {
+            // Always update current scroll position for restoration
+            book.scrollPosition = scrollTop;
+            
+            // Only update progress if it's higher than the previous maximum (high water mark)
+            const currentMaxProgress = book.progressPercent || 0;
+            if (progressPercent > currentMaxProgress) {
+                book.progressPercent = progressPercent;
+                console.log(`Progress advanced from ${currentMaxProgress.toFixed(1)}% to ${progressPercent.toFixed(1)}%`);
+                
+                // Update the book card in real-time if books view is active
+                updateBookCardProgress(bookId, progressPercent);
+            } else {
+                // Keep the higher progress but update current position for UI
+                console.log(`Maintaining max progress of ${currentMaxProgress.toFixed(1)}% (current: ${progressPercent.toFixed(1)}%)`);
+            }
+            
+            book.lastReadAt = new Date().toISOString();
+            
+            // Update reading time
+            if (isReadingActive && readingSessionStartTime) {
+                const sessionTime = (Date.now() - readingSessionStartTime) / 1000;
+                book.totalReadingTime = (book.totalReadingTime || 0) + sessionTime;
+                readingSessionStartTime = Date.now(); // Reset for next calculation
+            }
+            
+            saveBookToDB(book).catch(console.error);
+        }
+    }).catch(console.error);
+}
+
+/**
+ * Updates a specific book card's progress display in real-time
+ */
+function updateBookCardProgress(bookId, progressPercent) {
+    // Only update if we're in the books view
+    if (activeView !== 'books') return;
+    
+    try {
+        const bookCard = document.querySelector(`[data-id="${bookId}"]`);
+        if (bookCard) {
+            const progressBar = bookCard.querySelector('.progress-fill');
+            const progressText = bookCard.querySelector('.progress-text');
+            const roundedProgress = Math.round(progressPercent);
+            
+            if (progressBar) {
+                progressBar.style.width = `${roundedProgress}%`;
+                progressBar.style.transition = 'width 0.3s ease';
+            }
+            
+            if (progressText) {
+                progressText.textContent = `${roundedProgress}% ${roundedProgress === 100 ? 'completed' : 'read'}`;
+            }
+            
+            // Update last read time
+            const lastReadElement = bookCard.querySelector('.last-read');
+            if (lastReadElement) {
+                lastReadElement.innerHTML = `<i class="fas fa-clock"></i> Just now`;
+            } else {
+                // Add last read element if it doesn't exist
+                const bookMeta = bookCard.querySelector('.book-meta');
+                if (bookMeta) {
+                    const lastReadSpan = document.createElement('span');
+                    lastReadSpan.className = 'last-read';
+                    lastReadSpan.innerHTML = `<i class="fas fa-clock"></i> Just now`;
+                    bookMeta.appendChild(lastReadSpan);
+                }
+            }
+            
+            console.log(`Updated book card ${bookId} progress to ${roundedProgress}%`);
+        }
+    } catch (error) {
+        console.error('Error updating book card progress:', error);
+        // Fallback: refresh the entire books list
+        setTimeout(() => {
+            if (activeView === 'books') {
+                loadBooks();
+            }
+        }, 1000);
+    }
+}
+
+/**
+ * Updates all book cards when switching back to books view
+ */
+function refreshBookCardsProgress() {
+    if (activeView !== 'books') return;
+    
+    // Reload books to ensure all progress is up to date
+    loadBooks();
+}
+
+/**
+ * Restores reading position when opening a book
+ */
+function restoreReadingPosition(book) {
+    if (book.scrollPosition) {
+        const readerContentArea = document.getElementById('reader-content-area');
+        if (readerContentArea) {
+            setTimeout(() => {
+                readerContentArea.scrollTop = book.scrollPosition;
+                
+                // Calculate the actual scroll progress based on restored position
+                const scrollHeight = readerContentArea.scrollHeight - readerContentArea.clientHeight;
+                if (scrollHeight > 0) {
+                    currentScrollProgress = (book.scrollPosition / scrollHeight) * 100;
+                } else {
+                    currentScrollProgress = 0;
+                }
+                
+                // Update the display with the maximum progress achieved (high water mark)
+                updateScrollBasedProgress(currentScrollProgress);
+                
+                const maxProgress = book.progressPercent || 0;
+                showToast(`Restored to reading position (${Math.round(maxProgress)}% completed)`, 'info');
+            }, 500); // Delay to ensure content is loaded
+        }
+    }
+}
+
+/**
+ * Auto-saves reading position periodically
+ */
+function autoSaveReadingPosition(bookId) {
+    if (isReadingActive) {
+        updateBookScrollPosition(bookId, 
+            document.getElementById('reader-content-area')?.scrollTop || 0, 
+            currentScrollProgress
+        );
+    }
+}
+
+/**
+ * Calculates and updates reading speed (WPM)
+ */
+function updateReadingSpeed() {
+    if (!isReadingActive || !readingSessionStartTime) return;
+    
+    const sessionDuration = (Date.now() - readingSessionStartTime) / 1000 / 60; // minutes
+    const currentSession = readingSessions[readingSessions.length - 1];
+    
+    if (currentSession && sessionDuration > 0.5) { // Only calculate after 30 seconds
+        const wordsRead = calculateWordsRead(currentSession.progressStart, currentScrollProgress);
+        wordsPerMinute = Math.round(wordsRead / sessionDuration);
+        
+        // Display reading speed
+        updateReadingSpeedDisplay();
+    }
+}
+
+/**
+ * Updates the reading speed display in the UI
+ */
+function updateReadingSpeedDisplay() {
+    // Check if reading speed display exists, if not create it
+    let speedDisplay = document.querySelector('.reading-speed-display');
+    if (!speedDisplay) {
+        const progressContainer = document.querySelector('.reading-progress');
+        if (progressContainer) {
+            speedDisplay = document.createElement('div');
+            speedDisplay.className = 'reading-speed-display';
+            speedDisplay.style.cssText = `
+                font-size: 0.8rem;
+                color: var(--text-secondary);
+                margin-left: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            `;
+            progressContainer.appendChild(speedDisplay);
+        }
+    }
+    
+    if (speedDisplay && wordsPerMinute > 0) {
+        speedDisplay.innerHTML = `
+            <i class="fas fa-tachometer-alt"></i>
+            <span>${wordsPerMinute} WPM</span>
+        `;
+    }
+}
+
+/**
+ * Calculates estimated time remaining based on reading speed
+ */
+function updateTimeEstimates() {
+    if (wordsPerMinute > 0 && currentBookId) {
+        getBookFromDB(currentBookId).then(book => {
+            if (book && book.content) {
+                const totalWords = countWordsInText(book.content);
+                const wordsRemaining = totalWords * (1 - currentScrollProgress / 100);
+                const minutesRemaining = Math.round(wordsRemaining / wordsPerMinute);
+                
+                updateTimeRemainingDisplay(minutesRemaining);
+            }
+        }).catch(console.error);
+    }
+}
+
+/**
+ * Updates the time remaining display
+ */
+function updateTimeRemainingDisplay(minutes) {
+    let timeDisplay = document.querySelector('.time-remaining-display');
+    if (!timeDisplay) {
+        const progressContainer = document.querySelector('.reading-progress');
+        if (progressContainer) {
+            timeDisplay = document.createElement('div');
+            timeDisplay.className = 'time-remaining-display';
+            timeDisplay.style.cssText = `
+                font-size: 0.8rem;
+                color: var(--text-secondary);
+                margin-left: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            `;
+            progressContainer.appendChild(timeDisplay);
+        }
+    }
+    
+    if (timeDisplay && minutes > 0) {
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        
+        let timeText = '';
+        if (hours > 0) {
+            timeText = `${hours}h ${remainingMinutes}m remaining`;
+        } else {
+            timeText = `${remainingMinutes}m remaining`;
+        }
+        
+        timeDisplay.innerHTML = `
+            <i class="fas fa-clock"></i>
+            <span>${timeText}</span>
+        `;
+    }
+}
+
+/**
+ * Counts words in text content
+ */
+function countWordsInText(text) {
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+}
+
+/**
+ * Calculates words read between two progress points
+ */
+function calculateWordsRead(startProgress, endProgress) {
+    if (!currentBookId) return 0;
+    
+    // This is a simplified calculation - in reality you'd want to
+    // calculate based on actual visible text content
+    const progressDiff = Math.abs(endProgress - startProgress);
+    
+    // Estimate: assume average book has ~300 words per page
+    // and progress is based on scroll position
+    return Math.round((progressDiff / 100) * 1000); // Rough estimate
+}
+
+/**
+ * Updates reading progress display with enhanced information
+ */
+function updateReadingProgressDisplay(book) {
+    const progressFill = document.getElementById('reading-progress-fill');
+    const progressText = document.getElementById('reading-progress-text');
+    
+    let progress = 0;
+    if (book.progressPercent !== undefined) {
+        progress = book.progressPercent; // Use the high water mark progress
+    } else if (book.totalPages && book.currentPage) {
+        progress = Math.round((book.currentPage / book.totalPages) * 100);
+    }
+    
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
+    }
+    
+    if (progressText) {
+        progressText.textContent = `${Math.round(progress)}%`;
+    }
+    
+    // Store the max progress for reference but don't override current scroll tracking
+    // currentScrollProgress is used for session tracking, progress is the display value
+}
+
+/**
+ * Updates reading statistics and saves to localStorage
+ */
+function updateReadingStatistics() {
+    const stats = JSON.parse(localStorage.getItem('readingStats') || '{}');
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (!stats[today]) {
+        stats[today] = {
+            totalTime: 0,
+            wordsRead: 0,
+            sessionsCount: 0,
+            averageSpeed: 0
+        };
+    }
+    
+    // Calculate today's statistics from sessions
+    const todaySessions = readingSessions.filter(session => {
+        const sessionDate = new Date(session.startTime).toISOString().split('T')[0];
+        return sessionDate === today && session.endTime;
+    });
+    
+    if (todaySessions.length > 0) {
+        const totalTime = todaySessions.reduce((sum, session) => sum + session.duration, 0);
+        const totalWords = todaySessions.reduce((sum, session) => sum + session.wordsRead, 0);
+        const averageSpeed = totalTime > 0 ? Math.round(totalWords / (totalTime / 1000 / 60)) : 0;
+        
+        stats[today] = {
+            totalTime: totalTime,
+            wordsRead: totalWords,
+            sessionsCount: todaySessions.length,
+            averageSpeed: averageSpeed
+        };
+    }
+    
+    localStorage.setItem('readingStats', JSON.stringify(stats));
+}
+
+/**
+ * Loads bookmarks for a specific book
+ */
+function loadBookmarks(bookId) {
+    const bookmarks = readingBookmarks.get(bookId) || [];
+    console.log('Loaded bookmarks for book:', bookId, bookmarks);
+    return bookmarks;
+}
+
+/**
+ * Adds a bookmark at current reading position
+ */
+function addBookmark(bookId, note = '') {
+    const readerContentArea = document.getElementById('reader-content-area');
+    if (!readerContentArea) return;
+    
+    const bookmark = {
+        id: Date.now(),
+        position: readerContentArea.scrollTop,
+        progress: currentScrollProgress,
+        note: note,
+        createdAt: new Date().toISOString()
+    };
+    
+    const bookmarks = readingBookmarks.get(bookId) || [];
+    bookmarks.push(bookmark);
+    readingBookmarks.set(bookId, bookmarks);
+    
+    // Save to localStorage
+    const allBookmarks = {};
+    readingBookmarks.forEach((value, key) => {
+        allBookmarks[key] = value;
+    });
+    localStorage.setItem('readingBookmarks', JSON.stringify(allBookmarks));
+    
+    showToast('Bookmark added! 📖', 'success');
+    return bookmark;
+}
+
+/**
+ * Loads bookmarks from localStorage
+ */
+function loadBookmarksFromStorage() {
+    const saved = localStorage.getItem('readingBookmarks');
+    if (saved) {
+        const bookmarkData = JSON.parse(saved);
+        Object.entries(bookmarkData).forEach(([bookId, bookmarks]) => {
+            readingBookmarks.set(parseInt(bookId), bookmarks);
+        });
+    }
 }
 
 function handleTextSelection(event) {
@@ -1949,10 +2578,44 @@ function deleteHighlightFromBook(highlightId) {
 }
 
 function closeBookReader() {
+    // Close any open reader mobile menu
+    closeReaderMobileMenu();
+    
+    // End current reading session
+    endReadingSession();
+    
+    // Clear reading update intervals
+    if (readingProgressUpdateInterval) {
+        clearInterval(readingProgressUpdateInterval);
+        readingProgressUpdateInterval = null;
+    }
+    
+    // Save current reading position before closing
+    if (currentBookId && isReadingActive) {
+        autoSaveReadingPosition(currentBookId);
+    }
+    
+    // Store current book ID before resetting
+    const bookIdBeforeClose = currentBookId;
+    
+    // Reset reading state
+    isReadingActive = false;
+    currentScrollProgress = 0;
+    
+    // Close the modal
     if (bookReaderModal) {
         bookReaderModal.classList.remove('visible');
     }
+    
     currentBookId = null;
+    showToast('Reading session saved!', 'success');
+    
+    // Refresh book cards to show updated progress
+    if (bookIdBeforeClose && activeView === 'books') {
+        setTimeout(() => {
+            refreshBookCardsProgress();
+        }, 500); // Small delay to ensure data is saved
+    }
 }
 
 function renderNotes(notes) {
@@ -2061,7 +2724,8 @@ function renderBooks(books) {
         bookCard.className = 'book-card';
         bookCard.dataset.id = book.id;
         
-        const progress = book.totalPages ? Math.round((book.currentPage / book.totalPages) * 100) : 0;
+        const progress = book.progressPercent !== undefined ? Math.round(book.progressPercent) : 
+                        (book.totalPages && book.currentPage ? Math.round((book.currentPage / book.totalPages) * 100) : 0);
         const statusEmoji = getBookStatusEmoji(book.status);
         const categoryEmoji = getBookCategoryEmoji(book.category);
         
@@ -2084,12 +2748,15 @@ function renderBooks(books) {
                     <div class="progress-bar">
                         <div class="progress-fill" style="width: ${progress}%"></div>
                     </div>
-                    <span class="progress-text">${progress}% complete</span>
+                    <span class="progress-text">${progress}% ${progress === 100 ? 'completed' : 'read'}</span>
                 </div>
                 <div class="book-meta">
                     <span class="book-pages">
                         <i class="fas fa-file-alt"></i> ${book.totalPages || 'Unknown'} pages
                     </span>
+                    ${book.lastReadAt ? `<span class="last-read">
+                        <i class="fas fa-clock"></i> ${getTimeAgo(book.lastReadAt)}
+                    </span>` : ''}
                     <span class="book-category">
                         ${categoryEmoji} ${book.category}
                     </span>
@@ -2567,6 +3234,46 @@ function createHighlightElement(highlight, isCompact) {
     }
 }
 
+// Function to toggle between grid and list view for books
+function toggleBooksView(viewType) {
+    currentBooksView = viewType;
+    
+    // Update button states
+    const gridBtn = document.getElementById('books-grid-view');
+    const listBtn = document.getElementById('books-list-view');
+    const booksContainer = document.getElementById('books-container');
+    
+    if (gridBtn && listBtn && booksContainer) {
+        // Add transition class for smooth animation
+        booksContainer.classList.add('transitioning');
+        
+        // Update button states
+        gridBtn.classList.toggle('active', viewType === 'grid');
+        listBtn.classList.toggle('active', viewType === 'list');
+        
+        // Apply view changes after a brief delay for smooth transition
+        setTimeout(() => {
+            booksContainer.classList.toggle('books-list-view', viewType === 'list');
+            booksContainer.classList.toggle('books-grid-view', viewType === 'grid');
+            
+            // Remove transition class
+            setTimeout(() => {
+                booksContainer.classList.remove('transitioning');
+            }, 200);
+        }, 50);
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('booksViewMode', viewType);
+    
+    // Provide haptic feedback on supported devices
+    if ('vibrate' in navigator) {
+        navigator.vibrate(10);
+    }
+    
+    showToast(`Switched to ${viewType} view`, 'success');
+}
+
 // Function to reset highlight filters
 function resetHighlightFilters() {
     currentHighlightPage = 1;
@@ -2819,6 +3526,24 @@ function closeMobileMenu() {
     if (mobileSidebar) {
         mobileSidebar.classList.remove('open');
         sidebarOverlay.classList.remove('visible');
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// --- READER MOBILE MENU FUNCTIONS ---
+
+function openReaderMobileMenu() {
+    if (readerMobileSidebar) {
+        readerMobileSidebar.classList.add('open');
+        readerSidebarOverlay.classList.add('visible');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeReaderMobileMenu() {
+    if (readerMobileSidebar) {
+        readerMobileSidebar.classList.remove('open');
+        readerSidebarOverlay.classList.remove('visible');
         document.body.style.overflow = 'auto';
     }
 }
@@ -3092,7 +3817,15 @@ function setupEventListeners() {
     document.querySelectorAll('.emoji-grid span').forEach(emoji => { emoji.addEventListener('click', () => { noteContent.focus(); document.execCommand('insertText', false, emoji.textContent); emojiPicker.classList.remove('visible'); }); });
     document.addEventListener('click', (e) => { if (emojiPicker && !emojiPicker.parentElement.contains(e.target)) emojiPicker.classList.remove('visible'); });
     document.querySelectorAll('.tool-btn').forEach(btn => { btn.addEventListener('click', () => { noteContent.focus(); document.execCommand(btn.dataset.action, false, null); }); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && noteModal.classList.contains('visible')) closeNoteModal(); if ((e.ctrlKey || e.metaKey) && e.key === 's' && noteModal.classList.contains('visible')) { e.preventDefault(); saveAndClose(); } });
+    document.addEventListener('keydown', (e) => { 
+        if (e.key === 'Escape' && noteModal.classList.contains('visible')) closeNoteModal(); 
+        if ((e.ctrlKey || e.metaKey) && e.key === 's' && noteModal.classList.contains('visible')) { e.preventDefault(); saveAndClose(); } 
+        // Manual update check with Ctrl/Cmd + U
+        if ((e.ctrlKey || e.metaKey) && e.key === 'u' && !noteModal.classList.contains('visible')) { 
+            e.preventDefault(); 
+            forceUpdate(); 
+        }
+    });
     
     // PWA Install Prompt Event Listeners
     if (installButton) {
@@ -3133,6 +3866,57 @@ function setupEventListeners() {
     if (sidebarOverlay) {
         sidebarOverlay.addEventListener('click', closeMobileMenu);
     }
+    
+    // Reader Mobile Menu Event Listeners
+    if (readerMobileMenuBtn) {
+        readerMobileMenuBtn.addEventListener('click', openReaderMobileMenu);
+    }
+    if (closeReaderSidebarBtn) {
+        closeReaderSidebarBtn.addEventListener('click', closeReaderMobileMenu);
+    }
+    if (readerSidebarOverlay) {
+        readerSidebarOverlay.addEventListener('click', closeReaderMobileMenu);
+    }
+    
+    // Reader Action Buttons
+    const readerActionBtns = document.querySelectorAll('.reader-action-btn');
+    readerActionBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            closeReaderMobileMenu();
+            
+            switch(action) {
+                case 'bookmark':
+                    // Trigger bookmark action
+                    const bookmarkBtn = document.getElementById('reader-bookmark-btn');
+                    if (bookmarkBtn) bookmarkBtn.click();
+                    break;
+                case 'settings':
+                    // Trigger settings action
+                    const settingsBtn = document.getElementById('reader-settings-btn');
+                    if (settingsBtn) settingsBtn.click();
+                    break;
+                case 'highlights':
+                    // Trigger highlights toggle
+                    const highlightsBtn = document.getElementById('reader-highlights-btn');
+                    if (highlightsBtn) highlightsBtn.click();
+                    break;
+                case 'notes':
+                    // Trigger notes toggle
+                    const notesBtn = document.getElementById('reader-notes-btn');
+                    if (notesBtn) notesBtn.click();
+                    break;
+                case 'theme':
+                    // Trigger theme change
+                    cycleTheme();
+                    break;
+                case 'close':
+                    // Close the reader
+                    closeBookReader();
+                    break;
+            }
+        });
+    });
     
     // Sidebar Actions
     const sidebarNewNote = document.getElementById('sidebar-new-note');
@@ -3296,6 +4080,38 @@ function setupEventListeners() {
         });
     });
     
+    // Books View Toggle Events
+    const booksGridViewBtn = document.getElementById('books-grid-view');
+    const booksListViewBtn = document.getElementById('books-list-view');
+    
+    if (booksGridViewBtn) {
+        booksGridViewBtn.addEventListener('click', () => {
+            toggleBooksView('grid');
+        });
+        
+        // Add keyboard support
+        booksGridViewBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleBooksView('grid');
+            }
+        });
+    }
+    
+    if (booksListViewBtn) {
+        booksListViewBtn.addEventListener('click', () => {
+            toggleBooksView('list');
+        });
+        
+        // Add keyboard support
+        booksListViewBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleBooksView('list');
+            }
+        });
+    }
+    
     // Modal Close Events for Book Modals
     const bookImportModalOverlay = bookImportModal?.querySelector('.modal-overlay');
     if (bookImportModalOverlay) {
@@ -3368,6 +4184,30 @@ function setupEventListeners() {
         });
     }
     
+    // Bookmark button event
+    const readerBookmarkBtn = document.getElementById('reader-bookmark-btn');
+    if (readerBookmarkBtn) {
+        readerBookmarkBtn.addEventListener('click', () => {
+            if (currentBookId) {
+                showInputModal(
+                    'Add Bookmark 📖',
+                    'Add a note for this bookmark (optional):',
+                    'What\'s significant about this position?',
+                    '',
+                    (note) => {
+                        addBookmark(currentBookId, note.trim());
+                    },
+                    () => {
+                        // Add bookmark without note if user cancels
+                        addBookmark(currentBookId, '');
+                    }
+                );
+            } else {
+                showToast('No book is currently open', 'error');
+            }
+        });
+    }
+    
     // Emoji Category Tabs
     document.querySelectorAll('.emoji-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -3409,14 +4249,24 @@ function setupEventListeners() {
         const deltaX = touchEndX - touchStartX;
         const deltaY = touchEndY - touchStartY;
         
-        // Swipe right to open menu (from left edge)
-        if (deltaX > 100 && Math.abs(deltaY) < 100 && touchStartX < 50) {
+        // Swipe right to open main menu (from left edge)
+        if (deltaX > 100 && Math.abs(deltaY) < 100 && touchStartX < 50 && !document.getElementById('book-reader-modal').classList.contains('visible')) {
             openMobileMenu();
         }
         
-        // Swipe left to close menu
+        // Swipe left to open reader menu (from right edge) - only when reader is open
+        if (deltaX < -100 && Math.abs(deltaY) < 100 && touchStartX > window.innerWidth - 50 && document.getElementById('book-reader-modal')?.classList.contains('visible')) {
+            openReaderMobileMenu();
+        }
+        
+        // Swipe left to close main menu
         if (deltaX < -100 && Math.abs(deltaY) < 100 && mobileSidebar && mobileSidebar.classList.contains('open')) {
             closeMobileMenu();
+        }
+        
+        // Swipe right to close reader menu
+        if (deltaX > 100 && Math.abs(deltaY) < 100 && readerMobileSidebar && readerMobileSidebar.classList.contains('open')) {
+            closeReaderMobileMenu();
         }
         
         touchStartX = 0;
@@ -3564,7 +4414,15 @@ function confirmDeleteBookNote(noteId) {
 async function initApp() {
     try {
         const savedThemeName = localStorage.getItem('theme') || 'light';
-        const savedTheme = themes.find(t => t.name === savedThemeName) || themes[0];
+        // Fallback to light theme if forest theme was previously selected (since it's been removed)
+        const validThemeName = savedThemeName === 'forest' ? 'light' : savedThemeName;
+        const savedTheme = themes.find(t => t.name === validThemeName) || themes[0];
+        
+        // Update localStorage if we had to fallback from forest theme
+        if (savedThemeName === 'forest') {
+            localStorage.setItem('theme', 'light');
+        }
+        
         document.documentElement.setAttribute('data-theme', savedTheme.name);
         themeToggle.querySelector('i').className = `fas ${savedTheme.icon}`;
         
@@ -3575,10 +4433,45 @@ async function initApp() {
             collapsedBookSections = new Set(JSON.parse(savedCollapsedSections));
         }
         
+        // Load saved books view preference
+        const savedBooksView = localStorage.getItem('booksViewMode');
+        if (savedBooksView && (savedBooksView === 'grid' || savedBooksView === 'list')) {
+            currentBooksView = savedBooksView;
+            // Apply the view without showing toast message during initialization
+            const booksContainer = document.getElementById('books-container');
+            const gridBtn = document.getElementById('books-grid-view');
+            const listBtn = document.getElementById('books-list-view');
+            
+            if (booksContainer) {
+                booksContainer.classList.toggle('books-list-view', savedBooksView === 'list');
+                booksContainer.classList.toggle('books-grid-view', savedBooksView === 'grid');
+            }
+            
+            if (gridBtn && listBtn) {
+                gridBtn.classList.toggle('active', savedBooksView === 'grid');
+                listBtn.classList.toggle('active', savedBooksView === 'list');
+            }
+        }
+        
+        // Load bookmarks from localStorage
+        loadBookmarksFromStorage();
+        
+        // Load reading sessions from localStorage
+        const savedSessions = localStorage.getItem('readingSessions');
+        if (savedSessions) {
+            readingSessions = JSON.parse(savedSessions);
+            console.log('Loaded reading sessions:', readingSessions.length);
+        }
+        
+        console.log('Enhanced reading progress system initialized');
+        
         await openDatabase();
         
         // Initialize with Books view as default
         switchView('books');
+        
+        // Ensure button visibility is correct on startup
+        updateViewSpecificButtons('books');
         
         setupEventListeners();
         
@@ -3716,9 +4609,172 @@ Happy reading! 📚✨`;
         
         // Check PWA install eligibility
         checkInstallEligibility();
+        
+        // Setup automatic update system
+        setupAutoUpdateSystem();
+        
+        // Log initial update status
+        setTimeout(() => {
+            logUpdateStatus();
+        }, 2000);
     } catch (error) {
         showToast(`Initialization Error: The app could not start correctly: ${error}`, 'error');
         console.error('Initialization error:', error);
+    }
+}
+
+// --- AUTOMATIC UPDATE MANAGEMENT ---
+
+/**
+ * Manages automatic app updates and refresh functionality
+ */
+function setupAutoUpdateSystem() {
+    console.log('Setting up automatic update system...');
+    
+    // Listen for service worker updates
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', event => {
+            console.log('SW message received in main thread:', event.data);
+            
+            if (event.data && event.data.type) {
+                switch (event.data.type) {
+                    case 'SW_UPDATED':
+                        showToast('🔄 App updated successfully!', 'success');
+                        console.log('Service worker updated to version:', event.data.data.version);
+                        break;
+                        
+                    case 'CACHE_UPDATED':
+                        showToast('📱 App cache refreshed!', 'info');
+                        break;
+                        
+                    case 'UPDATE_AVAILABLE':
+                        handleUpdateAvailable();
+                        break;
+                        
+                    case 'SYNC_COMPLETE':
+                        showToast('💾 Data synced successfully!', 'success');
+                        break;
+                        
+                    case 'SYNC_FAILED':
+                        showToast('⚠️ Sync failed - check connection', 'warning');
+                        break;
+                }
+            }
+        });
+        
+        // Set up periodic update checks
+        if (updateCheckInterval) {
+            clearInterval(updateCheckInterval);
+        }
+        
+        // Check for updates every 2 minutes
+        updateCheckInterval = setInterval(() => {
+            checkForUpdates();
+        }, 120000);
+        
+        // Check for updates when page becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                checkForUpdates();
+            }
+        });
+        
+        // Check for updates on focus
+        window.addEventListener('focus', () => {
+            checkForUpdates();
+        });
+    }
+}
+
+/**
+ * Checks for service worker updates
+ */
+function checkForUpdates() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+            console.log('Checking for updates...');
+            registration.update();
+        }).catch(error => {
+            console.error('Update check failed:', error);
+        });
+    }
+}
+
+/**
+ * Handles when an update is available
+ */
+function handleUpdateAvailable() {
+    updateAvailable = true;
+    console.log('New app version available');
+    
+    // Show notification and auto-refresh after short delay
+    showToast('🚀 New version available! Updating automatically...', 'info');
+    
+    setTimeout(() => {
+        refreshApp();
+    }, 3000); // 3-second delay for user to see the message
+}
+
+/**
+ * Refreshes the app to apply updates
+ */
+function refreshApp() {
+    console.log('Refreshing app for updates...');
+    
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+            // Tell the waiting service worker to skip waiting
+            if (registration.waiting) {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } else {
+                // No waiting worker, just reload
+                window.location.reload();
+            }
+        });
+    } else {
+        window.location.reload();
+    }
+}
+
+/**
+ * Forces an immediate update check and refresh
+ */
+function forceUpdate() {
+    showToast('🔄 Checking for updates...', 'info');
+    
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+            // Force cache update
+            registration.active.postMessage({ type: 'CACHE_UPDATE' });
+            
+            // Check for new service worker
+            registration.update().then(() => {
+                setTimeout(() => {
+                    if (registration.waiting) {
+                        showToast('✨ New version found! Applying update...', 'success');
+                        refreshApp();
+                    } else {
+                        showToast('✅ App is up to date!', 'success');
+                    }
+                }, 1000);
+            });
+        });
+    }
+}
+
+/**
+ * Shows update status in console for debugging
+ */
+function logUpdateStatus() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+            console.log('=== PWA Update Status ===');
+            console.log('Active SW:', registration.active?.scriptURL);
+            console.log('Installing SW:', registration.installing?.scriptURL);
+            console.log('Waiting SW:', registration.waiting?.scriptURL);
+            console.log('Update available:', updateAvailable);
+            console.log('========================');
+        });
     }
 }
 

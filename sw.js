@@ -1,7 +1,7 @@
 // Yaadannoo PWA Service Worker
-const CACHE_NAME = 'yaadannoo-v1.0.0';
-const STATIC_CACHE = 'yaadannoo-static-v1.0.0';
-const DYNAMIC_CACHE = 'yaadannoo-dynamic-v1.0.0';
+const CACHE_NAME = 'yaadannoo-v1.0.1'; // Increment version for auto-updates
+const STATIC_CACHE = 'yaadannoo-static-v1.0.1';
+const DYNAMIC_CACHE = 'yaadannoo-dynamic-v1.0.1';
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
@@ -12,14 +12,12 @@ const STATIC_FILES = [
   './manifest.json',
   './favicon.ico',
   // External CDN resources
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://cdn.jsdelivr.net/npm/honey-toast@latest/dist/toast.umd.min.js',
-  'https://cdn.jsdelivr.net/npm/honey-toast@latest/dist/style.css'
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
-// Install event - cache static resources
+// Install event - cache static resources and skip waiting for auto-update
 self.addEventListener('install', event => {
-  console.log('[SW] Installing service worker...');
+  console.log('[SW] Installing new service worker...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
@@ -29,7 +27,8 @@ self.addEventListener('install', event => {
       })
       .then(() => {
         console.log('[SW] Static files cached successfully');
-        return self.skipWaiting(); // Activate immediately
+        // Skip waiting to activate immediately for auto-updates
+        return self.skipWaiting();
       })
       .catch(err => {
         console.error('[SW] Failed to cache static files:', err);
@@ -37,13 +36,14 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and claim clients immediately
 self.addEventListener('activate', event => {
-  console.log('[SW] Activating service worker...');
+  console.log('[SW] Activating new service worker...');
   
   event.waitUntil(
-    caches.keys()
-      .then(cacheNames => {
+    Promise.all([
+      // Clean up old caches
+      caches.keys().then(cacheNames => {
         return Promise.all(
           cacheNames.map(cacheName => {
             if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
@@ -52,13 +52,28 @@ self.addEventListener('activate', event => {
             }
           })
         );
-      })
-      .then(() => {
-        console.log('[SW] Service worker activated');
-        return self.clients.claim(); // Take control immediately
-      })
+      }),
+      // Take control of all clients immediately
+      self.clients.claim()
+    ])
+    .then(() => {
+      console.log('[SW] New service worker activated');
+      // Notify all clients about the update
+      return notifyClientsAboutUpdate();
+    })
   );
 });
+
+// Notify clients about service worker updates
+async function notifyClientsAboutUpdate() {
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => {
+    client.postMessage({
+      type: 'SW_UPDATED',
+      data: { version: CACHE_NAME }
+    });
+  });
+}
 
 // Fetch event - serve from cache with network fallback
 self.addEventListener('fetch', event => {
@@ -243,12 +258,21 @@ self.addEventListener('message', event => {
   if (event.data && event.data.type) {
     switch (event.data.type) {
       case 'SKIP_WAITING':
+        console.log('[SW] Skipping waiting phase for immediate activation');
         self.skipWaiting();
         break;
       
       case 'CACHE_UPDATE':
         // Force update cache
         event.waitUntil(updateCache());
+        break;
+        
+      case 'GET_VERSION':
+        // Send current version to client
+        event.ports[0].postMessage({
+          type: 'VERSION_INFO',
+          version: CACHE_NAME
+        });
         break;
       
       default:
@@ -257,12 +281,27 @@ self.addEventListener('message', event => {
   }
 });
 
-// Update cache manually
+// Update cache manually and notify clients
 async function updateCache() {
   try {
     const cache = await caches.open(STATIC_CACHE);
+    
+    // Clear old cache entries
+    const requests = await cache.keys();
+    await Promise.all(requests.map(request => cache.delete(request)));
+    
+    // Add fresh files
     await cache.addAll(STATIC_FILES);
     console.log('[SW] Cache updated successfully');
+    
+    // Notify clients about successful cache update
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'CACHE_UPDATED',
+        data: { version: CACHE_NAME }
+      });
+    });
   } catch (error) {
     console.error('[SW] Cache update failed:', error);
   }

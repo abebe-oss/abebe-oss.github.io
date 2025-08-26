@@ -29,23 +29,7 @@
     --shadow: rgba(0, 0, 0, 0.2);
 }
 
-[data-theme="forest"] {
-    /* Forest Theme */
-    --bg-primary: #1A4D2E;
-    --bg-secondary: #4F6F52;
-    --text-primary: #E8DFCA;
-    --text-secondary: #AEB59A;
-    --accent-primary: #F5EFE6;
-    --accent-secondary: #BF94E4;
-    --success: #A2C579;
-    --danger: #F97316;
-    --border: #739072;
-}
-
 /* --- Theme-Specific Tweaks --- */
-[data-theme="forest"] .btn.primary { background-color: var(--accent-primary); color: #1A4D2E; border-color: var(--accent-primary); }
-[data-theme="forest"] .tag.active { background: var(--accent-secondary); color: var(--bg-primary); border-color: var(--accent-secondary); }
-[data-theme="forest"] .header-content h1 { background: linear-gradient(90deg, var(--text-primary), var(--accent-secondary)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 /* --- Custom Toast Notifications --- */
 .custom-toast {
@@ -170,7 +154,31 @@ body {
 }
 
 /* Mobile Menu Button */
-.mobile-menu-btn { display: none; }
+.mobile-menu-btn { 
+    display: none;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0.75rem;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.mobile-menu-btn:hover {
+    background: var(--accent-primary);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.mobile-menu-btn i {
+    font-size: 1.1rem;
+}
+
 .desktop-actions { display: flex; gap: 0.75rem; }
 
 /* Mobile Sidebar */
@@ -186,6 +194,7 @@ body {
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-y: auto;
     box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .mobile-sidebar.open {
@@ -228,6 +237,7 @@ body {
 
 .sidebar-content {
     padding: 1rem;
+    padding-bottom: 2rem; /* Extra padding for easier scrolling */
 }
 
 .sidebar-section {
@@ -247,7 +257,7 @@ body {
     display: flex;
     align-items: center;
     width: 100%;
-    padding: 0.75rem;
+    padding: 1rem 0.75rem;
     margin: 0.25rem 0;
     background: var(--bg-primary);
     border: 1px solid var(--border);
@@ -257,7 +267,8 @@ body {
     cursor: pointer;
     transition: var(--transition);
     font-size: 0.9rem;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    min-height: 48px; /* Touch-friendly height */
 }
 
 .sidebar-btn:hover,
@@ -274,8 +285,22 @@ body {
 }
 
 /* --- Note List --- */
-.list-header { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 1.5rem; gap: 1rem; }
-.list-header h2 { font-size: 1.75rem; display: flex; align-items: center; gap: 0.5rem; }
+.list-header { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: flex-start; 
+    margin-bottom: 1.5rem; 
+    gap: 1rem; 
+    width: 100%;
+}
+.list-header h2 { 
+    font-size: clamp(1.25rem, 4vw, 1.75rem); 
+    display: flex; 
+    align-items: center; 
+    gap: 0.5rem; 
+    margin: 0;
+    width: 100%;
+}
 #notes-count, #books-count, #highlights-count { color: var(--text-secondary); font-weight: normal; font-size: 1.25rem; }
 
 /* Enhanced Search Container */
@@ -283,6 +308,7 @@ body {
     position: relative; 
     width: 100%; 
     max-width: 400px;
+    margin-bottom: 0.5rem;
 }
 
 .search-container i { 
@@ -297,7 +323,7 @@ body {
 
 #search-notes, #search-books, #search-highlights { 
     width: 100%; 
-    padding: 0.75rem 0.75rem 0.75rem 2.5rem; 
+    padding: 0.875rem 0.875rem 0.875rem 2.5rem; 
     border: 1px solid var(--border); 
     border-radius: var(--radius); 
     background: var(--bg-secondary); 
@@ -305,6 +331,7 @@ body {
     font-size: 1rem; 
     transition: var(--transition);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    min-height: 48px; /* Touch-friendly minimum */
 }
 
 #search-notes:focus, #search-books:focus, #search-highlights:focus { 
@@ -338,11 +365,13 @@ body {
     cursor: pointer; 
     transition: var(--transition); 
     border: 1px solid var(--border); 
-    padding: 1rem; 
+    padding: 1.25rem; 
     opacity: 0;
     transform: translateY(20px);
     position: relative;
     overflow: hidden;
+    min-height: 120px; /* Ensure adequate touch area */
+    margin-bottom: 1rem;
 }
 
 .note-card.visible {
@@ -962,7 +991,16 @@ body {
 /* --- Modal --- */
 .modal-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 0; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s 0.3s; }
 .modal-container.visible { opacity: 1; visibility: visible; transition: opacity 0.3s ease; }
-.modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); }
+.modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.95); backdrop-filter: blur(25px); }
+
+/* Theme-specific modal overlay for better coverage */
+:root .modal-overlay {
+    background-color: rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="dark"] .modal-overlay {
+    background-color: rgba(0, 0, 0, 0.95);
+}
 .modal-content { position: relative; display: flex; flex-direction: column; transition: transform 0.3s ease; width: 100%; height: 100%; transform: translateY(100%); border-radius: 0; }
 .modal-container.visible .modal-content { transform: translateY(0); }
 
@@ -998,13 +1036,60 @@ body {
 .button-group { display: flex; gap: 0.75rem; margin-top: 1rem; flex-shrink: 0; }
 
 /* --- Buttons --- */
-.btn { padding: 0.75rem 1.25rem; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-weight: 600; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: var(--transition); background: var(--bg-secondary); color: var(--text-primary); flex: 1; }
+/* --- Buttons --- */
+.btn { 
+    padding: 0.875rem 1.5rem; 
+    border: 1px solid var(--border); 
+    border-radius: var(--radius); 
+    cursor: pointer; 
+    font-weight: 600; 
+    font-size: 1rem; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 0.5rem; 
+    transition: var(--transition); 
+    background: var(--bg-secondary); 
+    color: var(--text-primary); 
+    flex: 1;
+    min-height: 48px; /* Touch-friendly minimum height */
+    text-decoration: none;
+    line-height: 1.4;
+}
 .btn:hover { transform: translateY(-2px); box-shadow: var(--card-shadow); }
 .btn.primary { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
 .btn.danger { background: var(--danger); color: white; border-color: var(--danger); }
-.tool-btn { width: 36px; height: 36px; border-radius: 8px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1rem; flex-shrink: 0; display: grid; place-items: center; }
+.tool-btn { 
+    width: 44px; 
+    height: 44px; 
+    border-radius: 8px; 
+    background: transparent; 
+    border: none; 
+    color: var(--text-secondary); 
+    cursor: pointer; 
+    font-size: 1rem; 
+    flex-shrink: 0; 
+    display: grid; 
+    place-items: center;
+    min-width: 44px; /* Better touch target */
+    transition: var(--transition);
+}
 .tool-btn:hover { background: var(--border); color: var(--text-primary); }
-.icon-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--bg-secondary); border: 1px solid var(--border); cursor: pointer; color: var(--text-primary); font-size: 1.1rem; transition: var(--transition); display: grid; place-items: center; flex-shrink: 0; }
+.icon-btn { 
+    width: 48px; 
+    height: 48px; 
+    border-radius: 50%; 
+    background: var(--bg-secondary); 
+    border: 1px solid var(--border); 
+    cursor: pointer; 
+    color: var(--text-primary); 
+    font-size: 1.1rem; 
+    transition: var(--transition); 
+    display: grid; 
+    place-items: center; 
+    flex-shrink: 0;
+    min-width: 48px; /* Ensure minimum touch target */
+}
 .icon-btn:hover { background: var(--accent-primary); color: white; transform: translateY(-2px); }
 /* STYLING FIX: Remove absolute positioning from close button */
 .modal-close-btn:hover { background-color: var(--danger); color: white; }
@@ -1199,7 +1284,22 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 [data-theme="dark"]::-webkit-scrollbar-thumb { background: #4b5563; }
-[data-theme="forest"]::-webkit-scrollbar-thumb { background: #1A4D2E; }
+
+@media (max-width: 991px) {
+    /* Show mobile menu for tablets and smaller */
+    .mobile-menu-btn {
+        display: grid;
+        place-items: center;
+    }
+    
+    .desktop-actions {
+        display: none;
+    }
+    
+    .desktop-navigation {
+        display: none;
+    }
+}
 
 /* --- RESPONSIVE DESIGN --- */
 @media (max-width: 768px) {
@@ -1220,36 +1320,45 @@ body {
     
     /* Adjust container padding for mobile */
     .container {
-        padding: 1rem;
+        padding: 1rem 0.75rem;
     }
     
     /* Make notes container single column on mobile */
     .notes-container {
         grid-template-columns: 1fr;
+        gap: 0.75rem;
     }
     
     /* Adjust header for mobile */
     .app-header {
         margin-bottom: 1rem;
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
         gap: 1rem;
+        flex-wrap: nowrap;
     }
     
     .header-content {
-        text-align: center;
+        text-align: left;
+        flex: 1;
+        min-width: 0; /* Allow text to shrink */
     }
     
     .header-actions {
-        justify-content: center;
+        justify-content: flex-end;
+        flex-shrink: 0;
     }
     
     .header-content h1 {
-        font-size: 1.5rem;
+        font-size: clamp(1.25rem, 5vw, 1.75rem);
+        margin: 0;
+        line-height: 1.2;
     }
     
     .tagline {
-        font-size: 0.85rem;
+        font-size: clamp(0.75rem, 3vw, 0.85rem);
+        margin-top: 0.125rem;
     }
     
     /* Make emoji picker full width on mobile */
@@ -1271,6 +1380,7 @@ body {
     .icon-btn {
         min-width: 48px;
         min-height: 48px;
+        padding: 0.75rem;
     }
     
     .note-card {
@@ -1288,15 +1398,150 @@ body {
     .editor {
         padding: 1rem;
     }
+    
+    /* Better mobile list headers */
+    .list-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .list-header h2 {
+        font-size: clamp(1.25rem, 5vw, 1.5rem);
+        text-align: center;
+    }
+    
+    /* Mobile search improvements */
+    .search-container {
+        width: 100%;
+        max-width: none;
+        order: 1;
+    }
+    
+    /* Mobile view controls */
+    .view-controls {
+        order: 2;
+        justify-content: center;
+        width: 100%;
+    }
+    
+    /* Mobile highlight filters */
+    .highlight-filters {
+        justify-content: center;
+        width: 100%;
+    }
 }
 
 @media (min-width: 600px) {
     .notes-container { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
     .list-header { flex-direction: row; justify-content: space-between; align-items: center; }
-    .search-container { width: auto; max-width: none; }
+    .search-container { width: auto; max-width: none; order: 0; }
+    .view-controls { order: 0; justify-content: flex-end; width: auto; }
+    .highlight-filters { justify-content: flex-end; width: auto; }
     #search-notes, #search-books, #search-highlights { min-width: 300px; }
     /* RESPONSIVE FIX: Align modal header items better on larger screens */
     .editor-header { flex-direction: row; align-items: center; justify-content: space-between; }
+}
+
+/* Extra small screens - Ultra mobile optimization */
+@media (max-width: 480px) {
+    .container {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    /* Very small screen list view optimizations */
+    .books-container.books-list-view .book-card {
+        padding: 0.5rem;
+        min-height: 90px;
+    }
+    
+    .books-container.books-list-view .book-cover {
+        width: 50px;
+        height: 75px;
+        margin-right: 0.75rem;
+    }
+    
+    .books-container.books-list-view .book-title {
+        font-size: 0.9rem;
+        line-height: 1.2;
+    }
+    
+    .books-container.books-list-view .book-author {
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .books-container.books-list-view .book-meta {
+        font-size: 0.7rem;
+        gap: 0.25rem;
+    }
+    
+    .books-container.books-list-view .book-actions {
+        margin-left: 0.25rem;
+        gap: 0.125rem;
+    }
+    
+    .books-container.books-list-view .action-btn {
+        min-width: 44px;
+        min-height: 40px;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.7rem;
+    }
+    
+    .books-container.books-list-view .progress-bar {
+        height: 5px;
+    }
+    
+    .app-header {
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .header-content h1 {
+        font-size: clamp(1.1rem, 6vw, 1.5rem);
+    }
+    
+    .tagline {
+        font-size: clamp(0.7rem, 3vw, 0.8rem);
+    }
+    
+    .note-card {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .sidebar-btn {
+        padding: 0.875rem;
+        min-height: 44px;
+    }
+    
+    .btn {
+        padding: 0.75rem 1.25rem;
+        min-height: 44px;
+        font-size: 0.9rem;
+    }
+    
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+    
+    .list-header h2 {
+        font-size: clamp(1.1rem, 5vw, 1.25rem);
+    }
+    
+    .import-method {
+        min-height: 50px;
+        padding: 0.5rem;
+    }
+    
+    .highlight-color-btn,
+    .view-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
 }
 
 @media (min-width: 768px) {
@@ -1361,12 +1606,6 @@ body {
     background: var(--bg-primary);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
-}
-
-.input-modal.theme-forest {
-    background: var(--bg-primary);
-    border: 1px solid rgba(34, 197, 94, 0.3);
-    box-shadow: 0 25px 50px rgba(22, 163, 74, 0.2);
 }
 
 .modal-header {
@@ -1513,12 +1752,6 @@ body {
     background: var(--bg-primary);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-}
-
-.confirmation-modal.theme-forest {
-    background: var(--bg-primary);
-    border: 1px solid rgba(34, 197, 94, 0.3);
-    box-shadow: 0 20px 40px rgba(22, 163, 74, 0.15);
 }
 
 /* Mobile responsive adjustments */
@@ -1729,8 +1962,190 @@ body {
 
 .books-container {
     display: grid;
-    gap: 1.5rem;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    grid-template-columns: 1fr; /* Mobile-first: single column */
+}
+
+/* Mobile-first Books List View Styling */
+.books-container.books-list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.books-container.books-list-view .book-card {
+    display: flex;
+    align-items: center;
+    height: auto;
+    padding: 0.75rem;
+    min-height: 100px; /* Ensure adequate touch area */
+}
+
+.books-container.books-list-view .book-cover {
+    width: 60px;
+    height: 90px;
+    flex-shrink: 0;
+    margin-right: 1rem;
+}
+
+.books-container.books-list-view .book-info {
+    flex: 1;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0; /* Prevent text overflow */
+}
+
+.books-container.books-list-view .book-title {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.books-container.books-list-view .book-author {
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.books-container.books-list-view .book-progress {
+    margin-bottom: 0.5rem;
+}
+
+.books-container.books-list-view .progress-bar {
+    height: 6px;
+}
+
+.books-container.books-list-view .book-meta {
+    margin-bottom: 0;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+}
+
+.books-container.books-list-view .book-actions {
+    padding: 0;
+    margin-left: 0.5rem;
+    flex-direction: row;
+    width: auto;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.books-container.books-list-view .action-btn {
+    min-width: 48px; /* Touch target compliance */
+    min-height: 44px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.books-container.books-list-view .action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.books-container.books-list-view .action-btn:active {
+    transform: translateY(0);
+    transition: transform 0.1s ease;
+}
+
+.books-container.books-list-view .action-btn i {
+    pointer-events: none; /* Ensure icon doesn't interfere with button clicks */
+}
+
+/* Tablet and larger screens - Progressive enhancement */
+@media (min-width: 600px) {
+    .books-container {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.25rem;
+    }
+    
+    .books-container.books-list-view .book-card {
+        padding: 1rem;
+        min-height: 120px;
+    }
+    
+    .books-container.books-list-view .book-cover {
+        width: 70px;
+        height: 105px;
+        margin-right: 1.25rem;
+    }
+    
+    .books-container.books-list-view .book-title {
+        font-size: 1.05rem;
+    }
+    
+    .books-container.books-list-view .book-author {
+        font-size: 0.85rem;
+    }
+    
+    .books-container.books-list-view .action-btn {
+        min-width: 60px;
+        padding: 0.5rem 0.7rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Desktop - Full enhancement */
+@media (min-width: 768px) {
+    .books-container {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .books-container.books-list-view {
+        gap: 1rem;
+    }
+    
+    .books-container.books-list-view .book-card {
+        padding: 1rem;
+        min-height: 140px;
+    }
+    
+    .books-container.books-list-view .book-cover {
+        width: 80px;
+        height: 120px;
+        margin-right: 1.5rem;
+    }
+    
+    .books-container.books-list-view .book-title {
+        font-size: 1.1rem;
+    }
+    
+    .books-container.books-list-view .book-author {
+        font-size: 0.85rem;
+    }
+    
+    .books-container.books-list-view .book-meta {
+        gap: 1rem;
+        font-size: 0.8rem;
+    }
+    
+    .books-container.books-list-view .book-actions {
+        flex-direction: column;
+        margin-left: 1rem;
+        gap: 0.25rem;
+    }
+    
+    .books-container.books-list-view .action-btn {
+        min-width: 80px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
 }
 
 /* Book Cards */
@@ -1865,12 +2280,24 @@ body {
     margin-bottom: 1rem;
     font-size: 0.8rem;
     color: var(--text-secondary);
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .book-pages, .book-category {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+}
+
+.book-meta .last-read {
+    color: var(--accent-primary);
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+
+.book-meta .last-read i {
+    color: var(--accent-secondary);
 }
 
 .book-actions {
@@ -2069,6 +2496,7 @@ body {
     margin-bottom: 2rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 1rem;
+    flex-wrap: wrap;
 }
 
 .import-method {
@@ -2080,6 +2508,12 @@ body {
     cursor: pointer;
     transition: var(--transition);
     text-align: center;
+    min-width: 120px;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .import-method:hover {
@@ -2131,13 +2565,15 @@ body {
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 0.75rem;
+    padding: 0.875rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg-secondary);
     color: var(--text-primary);
     font-size: 1rem;
     transition: var(--transition);
+    min-height: 48px; /* Touch-friendly */
+    box-sizing: border-box;
 }
 
 .form-group input:focus,
@@ -2645,6 +3081,8 @@ body {
     gap: 0.75rem;
     align-items: center;
     flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-start;
 }
 
 .view-btn {
@@ -2654,12 +3092,30 @@ body {
     background: var(--bg-secondary);
     color: var(--text-secondary);
     cursor: pointer;
-    transition: var(--transition);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 44px;
-    height: 44px;
+    min-width: 48px; /* Better touch target */
+    height: 48px; /* Better touch target */
+    font-size: 0.9rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.view-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.view-btn:hover::before {
+    left: 100%;
 }
 
 .view-btn.active,
@@ -2671,6 +3127,18 @@ body {
     box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
 }
 
+.view-btn.active {
+    transform: none;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+/* Loading state for view transitions */
+.books-container.transitioning {
+    opacity: 0.7;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
 .highlight-filters {
     display: flex;
     gap: 0.75rem;
@@ -2679,8 +3147,8 @@ body {
 }
 
 .highlight-color-btn {
-    width: 44px;
-    height: 44px;
+    width: 48px; /* Better touch target */
+    height: 48px; /* Better touch target */
     border: 2px solid var(--border);
     border-radius: 50%;
     background: var(--bg-secondary);
@@ -2738,6 +3206,7 @@ body {
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+    position: relative;
 }
 
 .reader-info h3 {
@@ -2752,9 +3221,113 @@ body {
     font-size: 0.9rem;
 }
 
+/* Reader Mobile Menu Button */
+.reader-mobile-menu-btn {
+    display: none;
+}
+
+.desktop-reader-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
 .reader-controls {
     display: flex;
     gap: 0.5rem;
+}
+
+/* Reader Mobile Sidebar */
+.reader-mobile-sidebar {
+    position: fixed;
+    top: 0;
+    right: -300px;
+    width: 280px;
+    height: 100vh;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border);
+    z-index: 1300;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    -webkit-overflow-scrolling: touch;
+}
+
+.reader-mobile-sidebar.open {
+    right: 0;
+}
+
+.reader-sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1250;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s 0.3s;
+}
+
+.reader-sidebar-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease;
+}
+
+.reader-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--accent-primary);
+    color: white;
+}
+
+.reader-sidebar-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.reader-sidebar-content {
+    padding: 1rem;
+    padding-bottom: 2rem;
+}
+
+.reader-sidebar-section {
+    margin-bottom: 2rem;
+}
+
+.reader-sidebar-section h4 {
+    margin: 0 0 1rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.reader-action-btn {
+    justify-content: flex-start;
+}
+
+.reader-action-btn.danger {
+    background: var(--bg-primary);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.reader-action-btn.danger:hover {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
 }
 
 .reader-body {
@@ -2777,11 +3350,101 @@ body {
     padding: 1rem 2rem;
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
 }
 
 .reading-progress .progress-bar {
     flex: 1;
-    height: 6px;
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    min-width: 200px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+    border-radius: 12px;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: progressShimmer 2s infinite;
+}
+
+@keyframes progressShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 50px;
+    text-align: center;
+    background: var(--bg-secondary);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+/* Enhanced Reading Progress Displays */
+.reading-speed-display,
+.time-remaining-display {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-secondary);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.reading-speed-display i,
+.time-remaining-display i {
+    color: var(--accent-primary);
+    font-size: 0.9rem;
+}
+
+/* Reading Progress Responsive Design */
+@media (max-width: 768px) {
+    .reading-progress {
+        padding: 0.75rem 1rem;
+        gap: 0.75rem;
+    }
+    
+    .reading-speed-display,
+    .time-remaining-display {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
+    .progress-text {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+        min-width: 45px;
+    }
+    
+    .reading-progress .progress-bar {
+        min-width: 150px;
+        height: 6px;
+    }
 }
 
 .reader-content-area {
@@ -2963,12 +3626,34 @@ body {
 
 /* --- RESPONSIVE BOOK STYLES --- */
 @media (max-width: 768px) {
-    .books-container {
-        grid-template-columns: 1fr;
+    /* Additional mobile optimizations beyond mobile-first base styles */
+    .view-controls {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+    
+    .view-btn {
+        min-width: 48px;
+        height: 48px;
+        padding: 0.75rem;
+    }
+    
+    /* Mobile search bar enhancements */
+    .search-container {
+        width: 100%;
+        margin-bottom: 0.75rem;
+    }
+    
+    #search-notes, #search-books, #search-highlights {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 0.875rem 0.875rem 0.875rem 2.6rem;
+        min-height: 48px;
     }
     
     .highlights-grid {
         grid-template-columns: 1fr;
+        gap: 1rem;
     }
     
     .reader-sidebar {
@@ -2979,57 +3664,99 @@ body {
         padding: 1rem;
     }
     
+    /* Show mobile reader menu on mobile */
+    .reader-mobile-menu-btn {
+        display: grid;
+        place-items: center;
+        min-width: 48px;
+        min-height: 48px;
+    }
+    
+    .desktop-reader-controls {
+        display: none;
+    }
+    
+    /* Reader header mobile adjustments */
+    .reader-header {
+        padding: 1rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .reader-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .reader-info h3 {
+        font-size: clamp(1rem, 4vw, 1.25rem);
+        line-height: 1.2;
+    }
+    
+    .reader-info p {
+        font-size: 0.85rem;
+    }
+    
     .book-import-content {
         width: 100%;
         height: 100%;
         max-height: none;
         border-radius: 0;
+        overflow-y: auto;
     }
     
     .import-methods {
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.75rem;
+    }
+    
+    .import-method {
+        min-height: 60px;
+        padding: 0.75rem;
     }
     
     .view-controls {
         flex-wrap: wrap;
         gap: 0.5rem;
+        justify-content: center;
     }
     
     .highlight-filters {
         flex-wrap: wrap;
-        gap: 0.5rem;
+        gap: 0.75rem;
         justify-content: center;
     }
     
     .highlight-color-btn {
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
     }
     
     .view-btn {
-        min-width: 40px;
-        height: 40px;
-        padding: 0.5rem;
+        min-width: 48px;
+        height: 48px;
+        padding: 0.75rem;
     }
     
     /* Mobile search bar enhancements */
     .search-container {
         width: 100%;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
     }
     
     #search-notes, #search-books, #search-highlights {
         font-size: 16px; /* Prevents zoom on iOS */
-        padding: 0.8rem 0.8rem 0.8rem 2.6rem;
+        padding: 0.875rem 0.875rem 0.875rem 2.6rem;
+        min-height: 48px;
     }
     
     .list-header {
-        gap: 0.75rem;
+        gap: 1rem;
     }
     
     .list-header h2 {
-        font-size: 1.5rem;
+        font-size: clamp(1.25rem, 5vw, 1.5rem);
+        text-align: center;
     }
     
     .highlight-toolbar {
@@ -3039,8 +3766,34 @@ body {
     }
     
     .highlight-btn {
-        width: 35px;
-        height: 35px;
+        width: 44px;
+        height: 44px;
+    }
+    
+    /* Better modal spacing on mobile */
+    .modal-header {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .modal-header h3 {
+        font-size: 1.25rem;
+    }
+    
+    /* Better form spacing */
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .modal-actions .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 48px;
     }
 }
 

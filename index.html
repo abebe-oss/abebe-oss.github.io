@@ -430,7 +430,17 @@
                     <h3 id="reader-book-title">Book Title</h3>
                     <p id="reader-book-author">Author Name</p>
                 </div>
-                <div class="reader-controls">
+                
+                <!-- Mobile Reader Menu Button -->
+                <button id="reader-mobile-menu-btn" class="icon-btn reader-mobile-menu-btn" title="Reader Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                
+                <!-- Desktop Reader Controls -->
+                <div class="reader-controls desktop-reader-controls">
+                    <button class="icon-btn" id="reader-bookmark-btn" title="Add Bookmark">
+                        <i class="fas fa-bookmark"></i>
+                    </button>
                     <button class="icon-btn" id="reader-settings-btn" title="Reading Settings">
                         <i class="fas fa-cog"></i>
                     </button>
@@ -445,6 +455,49 @@
                     </button>
                 </div>
             </div>
+            
+            <!-- Mobile Reader Sidebar Menu -->
+            <div id="reader-mobile-sidebar" class="reader-mobile-sidebar">
+                <div class="reader-sidebar-header">
+                    <h3><i class="fas fa-book-open"></i> Reader Menu</h3>
+                    <button id="close-reader-sidebar-btn" class="icon-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="reader-sidebar-content">
+                    <div class="reader-sidebar-section">
+                        <h4><i class="fas fa-tools"></i> Reading Tools</h4>
+                        <button id="sidebar-reader-bookmark" class="sidebar-btn reader-action-btn" data-action="bookmark">
+                            <i class="fas fa-bookmark"></i> Add Bookmark
+                        </button>
+                        <button id="sidebar-reader-settings" class="sidebar-btn reader-action-btn" data-action="settings">
+                            <i class="fas fa-cog"></i> Reading Settings
+                        </button>
+                    </div>
+                    <div class="reader-sidebar-section">
+                        <h4><i class="fas fa-eye"></i> View Options</h4>
+                        <button id="sidebar-reader-highlights" class="sidebar-btn reader-action-btn" data-action="highlights">
+                            <i class="fas fa-highlighter"></i> Toggle Highlights
+                        </button>
+                        <button id="sidebar-reader-notes" class="sidebar-btn reader-action-btn" data-action="notes">
+                            <i class="fas fa-sticky-note"></i> Toggle Notes
+                        </button>
+                    </div>
+                    <div class="reader-sidebar-section">
+                        <h4><i class="fas fa-palette"></i> Appearance</h4>
+                        <button id="sidebar-reader-theme" class="sidebar-btn reader-action-btn" data-action="theme">
+                            <i class="fas fa-palette"></i> Change Theme
+                        </button>
+                    </div>
+                    <div class="reader-sidebar-section">
+                        <h4><i class="fas fa-sign-out-alt"></i> Navigation</h4>
+                        <button id="sidebar-reader-close" class="sidebar-btn reader-action-btn danger" data-action="close">
+                            <i class="fas fa-times"></i> Close Reader
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="reader-sidebar-overlay" class="reader-sidebar-overlay"></div>
             <div class="reader-body">
                 <div class="reader-main">
                     <div class="reading-progress">
@@ -511,6 +564,10 @@
     
     <!-- PWA Service Worker Registration -->
     <script>
+        // Simple service worker registration - main update logic is in script.js
+        let refreshing = false;
+        let newWorkerAvailable = null;
+        
         // Register service worker for PWA functionality
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
@@ -518,33 +575,60 @@
                     const registration = await navigator.serviceWorker.register('./sw.js');
                     console.log('SW registered: ', registration);
                     
-                    // Handle service worker updates
+                    // Handle service worker updates with automatic refresh
                     registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        if (newWorker) {
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // New content is available, prompt user to refresh
-                                    if (typeof showToast === 'function') {
-                                        showToast('App Updated! Refresh to get the latest features.', 'info');
-                                        
-                                        // Optionally auto-refresh after showing toast
-                                        setTimeout(() => {
-                                            if (confirm('A new version is available. Refresh now?')) {
-                                                window.location.reload();
+                        newWorkerAvailable = registration.installing;
+                        
+                        if (newWorkerAvailable) {
+                            newWorkerAvailable.addEventListener('statechange', () => {
+                                switch (newWorkerAvailable.state) {
+                                    case 'installed':
+                                        if (navigator.serviceWorker.controller) {
+                                            // New content is available, show toast and auto-refresh
+                                            if (typeof showToast === 'function') {
+                                                showToast('🔄 App updated! Refreshing automatically...', 'info');
                                             }
-                                        }, 1000);
-                                    } else if (confirm('App Updated! A new version is available. Refresh now?')) {
-                                        window.location.reload();
-                                    }
+                                            
+                                            // Auto-refresh after 2 seconds
+                                            setTimeout(() => {
+                                                refreshAppNow();
+                                            }, 2000);
+                                        } else {
+                                            // No controller means first install
+                                            if (typeof showToast === 'function') {
+                                                showToast('✅ App ready for offline use!', 'success');
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'redundant':
+                                        console.log('New service worker is redundant');
+                                        break;
                                 }
                             });
                         }
                     });
+                    
+                    // Listen for controlling service worker changes
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        if (refreshing) return;
+                        refreshing = true;
+                        window.location.reload();
+                    });
+                    
                 } catch (error) {
                     console.log('SW registration failed: ', error);
                 }
             });
+        }
+        
+        // Function to refresh the app (renamed to avoid conflicts)
+        function refreshAppNow() {
+            if (newWorkerAvailable) {
+                newWorkerAvailable.postMessage({ type: 'SKIP_WAITING' });
+            } else {
+                window.location.reload();
+            }
         }
         
         // Handle service worker messages
@@ -554,8 +638,15 @@
                 
                 if (event.data && event.data.type === 'SYNC_COMPLETE') {
                     if (typeof showToast === 'function') {
-                        showToast('Notes synced successfully!', 'success');
+                        showToast('📚 Data synced successfully!', 'success');
                     }
+                }
+                
+                if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+                    if (typeof showToast === 'function') {
+                        showToast('🔄 New version available! Updating...', 'info');
+                    }
+                    setTimeout(() => refreshAppNow(), 1500);
                 }
             });
         }
