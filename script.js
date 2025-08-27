@@ -939,7 +939,7 @@ async function saveBook() {
                 content: document.getElementById('book-content-input').value.trim(),
                 totalPages: Math.ceil(document.getElementById('book-content-input').value.length / 2500), // Estimate pages
                 currentPage: 0,
-                status: 'reading',
+                status: 'reading', // Auto-managed based on reading behavior
                 dateAdded: now
             };
         } else if (currentMethod === 'file') {
@@ -951,7 +951,7 @@ async function saveBook() {
                 content: document.getElementById('book-content-input').value.trim(),
                 totalPages: Math.ceil(document.getElementById('book-content-input').value.length / 2500), // Estimate pages
                 currentPage: 0,
-                status: 'reading',
+                status: 'reading', // Auto-managed based on reading behavior
                 dateAdded: now
             };
         } else if (currentMethod === 'manual') {
@@ -963,7 +963,7 @@ async function saveBook() {
                 totalPages: parseInt(document.getElementById('manual-total-pages').value) || 0,
                 content: '', // Will be added later
                 currentPage: 0,
-                status: 'reading',
+                status: 'reading', // Auto-managed based on reading behavior
                 dateAdded: now
             };
         }
@@ -995,6 +995,9 @@ async function saveBook() {
 
 async function loadBooks() {
     try {
+        // Check and update all book statuses before loading
+        await checkAndUpdateAllBookStatuses();
+        
         const searchTerm = searchBooksInput?.value.trim() || '';
         let books = await loadBooksFromDB();
         
@@ -1028,6 +1031,123 @@ async function deleteBook(bookId) {
     } catch (error) {
         showToast('Error deleting book', 'error');
         console.error('Delete book error:', error);
+    }
+}
+
+// --- BOOK STATUS MANAGEMENT FUNCTIONS ---
+
+/**
+ * Automatically manages book status based on reading behavior
+ */
+async function updateBookStatusAutomatically(bookId, progressPercent) {
+    try {
+        const book = await getBookFromDB(bookId);
+        if (!book) return;
+        
+        const now = new Date();
+        const lastReadAt = book.lastReadAt ? new Date(book.lastReadAt) : null;
+        const timeSinceLastRead = lastReadAt ? (now - lastReadAt) / (1000 * 60) : 0; // minutes
+        
+        let newStatus = book.status;
+        
+        // Rule 1: Mark as completed when progress reaches 100%
+        if (progressPercent >= 100) {
+            newStatus = 'completed';
+        }
+        // Rule 2: Mark as reading when reader is opened and was closed < 1 min ago and not 100%
+        else if (progressPercent < 100 && timeSinceLastRead < 1) {
+            newStatus = 'reading';
+        }
+        // Rule 3: Mark as paused when not 100% and >= 1 min since last read
+        else if (progressPercent < 100 && timeSinceLastRead >= 1) {
+            newStatus = 'paused';
+        }
+        
+        // Update status if it changed
+        if (newStatus !== book.status) {
+            const oldStatus = book.status;
+            book.status = newStatus;
+            book.statusChangedAt = now.toISOString();
+            
+            if (newStatus === 'completed') {
+                book.completedAt = now.toISOString();
+            }
+            
+            await saveBookToDB(book);
+            
+            const statusEmojis = {
+                'reading': '📖',
+                'completed': '✅', 
+                'paused': '⏸️'
+            };
+            
+            console.log(`Book status automatically changed from '${oldStatus}' to '${newStatus}' for book ${bookId}`);
+            
+            // Show notification for completion only
+            if (newStatus === 'completed') {
+                showToast(`🎉 Book completed: "${book.title}"!`, 'success');
+            }
+            
+            // Update books view if active
+            if (activeView === 'books') {
+                setTimeout(() => loadBooks(), 500);
+            }
+        }
+    } catch (error) {
+        console.error('Error updating book status automatically:', error);
+    }
+}
+
+/**
+ * Checks and updates status when opening a book reader
+ */
+async function handleBookReaderOpen(bookId) {
+    try {
+        const book = await getBookFromDB(bookId);
+        if (book) {
+            const progressPercent = book.progressPercent || 0;
+            await updateBookStatusAutomatically(bookId, progressPercent);
+            
+            // Mark the book as currently being read
+            book.lastReadAt = new Date().toISOString();
+            await saveBookToDB(book);
+        }
+    } catch (error) {
+        console.error('Error handling book reader open:', error);
+    }
+}
+
+/**
+ * Checks and updates status when closing a book reader
+ */
+async function handleBookReaderClose(bookId) {
+    try {
+        const book = await getBookFromDB(bookId);
+        if (book) {
+            // Update last read timestamp
+            book.lastReadAt = new Date().toISOString();
+            await saveBookToDB(book);
+            
+            // Status will be automatically updated next time based on time elapsed
+            console.log(`Book reader closed for book ${bookId}, last read time updated`);
+        }
+    } catch (error) {
+        console.error('Error handling book reader close:', error);
+    }
+}
+
+/**
+ * Periodically checks and updates all book statuses based on reading behavior
+ */
+async function checkAndUpdateAllBookStatuses() {
+    try {
+        const books = await loadBooksFromDB();
+        for (const book of books) {
+            const progressPercent = book.progressPercent || 0;
+            await updateBookStatusAutomatically(book.id, progressPercent);
+        }
+    } catch (error) {
+        console.error('Error checking all book statuses:', error);
     }
 }
 
@@ -1119,6 +1239,12 @@ function openBookImportModal() {
     document.getElementById('book-author-input').value = '';
     document.getElementById('book-content-input').value = '';
     
+    // Reset manual form fields
+    document.getElementById('manual-book-title').value = '';
+    document.getElementById('manual-book-author').value = '';
+    document.getElementById('manual-book-isbn').value = '';
+    document.getElementById('manual-total-pages').value = '';
+    
     if (bookImportModal) {
         bookImportModal.classList.add('visible');
     }
@@ -1133,6 +1259,9 @@ function closeBookImportModal() {
 
 function openBookReader(bookId) {
     currentBookId = bookId;
+    
+    // Handle automatic status management when opening reader
+    handleBookReaderOpen(bookId);
     
     // Initialize reading session
     startReadingSession(bookId);
@@ -1431,6 +1560,9 @@ function updateBookScrollPosition(bookId, scrollTop, progressPercent) {
             if (progressPercent > currentMaxProgress) {
                 book.progressPercent = progressPercent;
                 console.log(`Progress advanced from ${currentMaxProgress.toFixed(1)}% to ${progressPercent.toFixed(1)}%`);
+                
+                // Check for automatic status update
+                updateBookStatusAutomatically(bookId, progressPercent);
                 
                 // Update the book card in real-time if books view is active
                 updateBookCardProgress(bookId, progressPercent);
@@ -2597,6 +2729,11 @@ function closeBookReader() {
     
     // Store current book ID before resetting
     const bookIdBeforeClose = currentBookId;
+    
+    // Handle automatic status management when closing reader
+    if (bookIdBeforeClose) {
+        handleBookReaderClose(bookIdBeforeClose);
+    }
     
     // Reset reading state
     isReadingActive = false;
